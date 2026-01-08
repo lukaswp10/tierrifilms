@@ -23,12 +23,26 @@ export default function Contact() {
     servico: '',
     mensagem: ''
   });
+  const [emailError, setEmailError] = useState('');
 
   // NUMERO DO WHATSAPP - ALTERE AQUI
   const whatsappNumber = "5511999999999";
 
+  // Validacao de email com regex
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Valida email antes de enviar
+    if (!isValidEmail(formState.email)) {
+      setEmailError('Por favor, insira um email valido');
+      return;
+    }
+    setEmailError('');
     
     // Monta a mensagem com os dados do formulario
     const servicoTexto = formState.servico ? `Servico: ${formState.servico}` : '';
@@ -104,6 +118,7 @@ ${formState.mensagem}`.trim();
                   value={formState.nome}
                   onChange={handleChange}
                   required
+                  maxLength={100}
                   className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-[#c9a227] focus:outline-none transition-colors"
                   placeholder="Seu nome"
                 />
@@ -114,11 +129,20 @@ ${formState.mensagem}`.trim();
                   type="email"
                   name="email"
                   value={formState.email}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    handleChange(e);
+                    if (emailError) setEmailError('');
+                  }}
                   required
-                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-[#c9a227] focus:outline-none transition-colors"
+                  maxLength={100}
+                  className={`w-full bg-[#141414] border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none transition-colors ${
+                    emailError ? 'border-red-500 focus:border-red-500' : 'border-[#2a2a2a] focus:border-[#c9a227]'
+                  }`}
                   placeholder="seu@email.com"
                 />
+                {emailError && (
+                  <p className="text-red-500 text-xs mt-1">{emailError}</p>
+                )}
               </div>
             </div>
 
@@ -130,6 +154,7 @@ ${formState.mensagem}`.trim();
                   name="telefone"
                   value={formState.telefone}
                   onChange={handleChange}
+                  maxLength={20}
                   className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-[#c9a227] focus:outline-none transition-colors"
                   placeholder="(11) 99999-9999"
                 />
@@ -162,6 +187,7 @@ ${formState.mensagem}`.trim();
                 onChange={handleChange}
                 required
                 rows={4}
+                maxLength={500}
                 className="w-full bg-[#141414] border border-[#2a2a2a] rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-[#c9a227] focus:outline-none transition-colors resize-none"
                 placeholder="Conte-nos sobre seu projeto..."
               />
