@@ -1,23 +1,21 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200;300;400;500;600;700&display=swap');
 
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
+  --background: #000000;
   --foreground: #ffffff;
-  --accent: #c9a227;
-  --accent-hover: #e6b82e;
-  --card-bg: #141414;
-  --card-border: #2a2a2a;
-  --text-muted: #888888;
+  --black: #000000;
+  --white: #ffffff;
+  --gray: #888888;
+  --gray-dark: #333333;
+  --gray-light: #cccccc;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
-  --font-sans: 'Outfit', sans-serif;
-  --font-display: 'Bebas Neue', sans-serif;
+  --font-sans: 'Oswald', sans-serif;
 }
 
 *,
@@ -32,85 +30,224 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: 'Outfit', sans-serif;
+  background-color: #000000 !important;
+  background: #000000 !important;
+  color: #ffffff;
+  font-family: 'Oswald', sans-serif;
   overflow-x: hidden;
   width: 100%;
 }
 
+/* Scrollbar minimalista */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background);
+  background: var(--black);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--accent);
-  border-radius: 4px;
+  background: var(--gray-dark);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-hover);
+  background: var(--gray);
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--background);
+  background: var(--white);
+  color: var(--black);
 }
 
-.gradient-text {
-  background: linear-gradient(135deg, var(--accent) 0%, #fff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/* Classe para texto outline (so contorno) */
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px var(--white);
+  text-stroke: 1px var(--white);
 }
 
-.video-container {
-  position: relative;
+.text-outline-thin {
+  color: transparent;
+  -webkit-text-stroke: 0.5px var(--white);
+  text-stroke: 0.5px var(--white);
+}
+
+.text-outline-thick {
+  color: transparent;
+  -webkit-text-stroke: 2px var(--white);
+  text-stroke: 2px var(--white);
+}
+
+/* Titulos gigantes */
+.title-giant {
+  font-size: clamp(2.5rem, 12vw, 12rem);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.title-large {
+  font-size: clamp(2rem, 8vw, 8rem);
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.title-medium {
+  font-size: clamp(2rem, 6vw, 5rem);
+  font-weight: 400;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+/* Texto italico para destaques */
+.text-italic {
+  font-style: italic;
+}
+
+/* Botao estilo sand.black */
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 2rem;
+  border: 1px solid var(--white);
+  background: transparent;
+  color: var(--white);
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-outline:hover {
+  background: var(--white);
+  color: var(--black);
+}
+
+.btn-solid {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 2rem;
+  border: 1px solid var(--white);
+  background: var(--white);
+  color: var(--black);
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-solid:hover {
+  background: transparent;
+  color: var(--white);
+}
+
+/* Input estilo sand.black */
+.input-minimal {
   width: 100%;
-  padding-bottom: 56.25%;
-  overflow: hidden;
-  border-radius: 12px;
+  padding: 1rem;
+  background: transparent;
+  border: 1px solid var(--gray-dark);
+  color: var(--white);
+  font-family: 'Oswald', sans-serif;
+  font-size: 1rem;
+  font-weight: 300;
+  transition: border-color 0.3s ease;
 }
 
-.video-container iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+.input-minimal::placeholder {
+  color: var(--gray);
 }
 
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.input-minimal:focus {
+  outline: none;
+  border-color: var(--white);
 }
 
-.animated-gradient {
-  background: linear-gradient(-45deg, #0a0a0a, #1a1a1a, #0a0a0a, #141414);
-  background-size: 400% 400%;
-  animation: gradient-shift 15s ease infinite;
+/* Marquee animation */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
-.glow {
-  box-shadow: 0 0 40px rgba(201, 162, 39, 0.3);
+.animate-marquee {
+  animation: marquee 30s linear infinite;
 }
 
-@keyframes line-grow {
-  from { width: 0; }
-  to { width: 100%; }
-}
-
-.line-animate {
-  animation: line-grow 1s ease-out forwards;
-}
-
-/* Fix for Tailwind v4 mx-auto not being generated */
+/* Fix para classes do Tailwind v4 que nao estao sendo geradas */
 .mx-auto {
   margin-left: auto;
   margin-right: auto;
+}
+
+.max-w-7xl {
+  max-width: 80rem;
+}
+
+.max-w-6xl {
+  max-width: 72rem;
+}
+
+.max-w-5xl {
+  max-width: 64rem;
+}
+
+.max-w-4xl {
+  max-width: 56rem;
+}
+
+.max-w-3xl {
+  max-width: 48rem;
+}
+
+.max-w-2xl {
+  max-width: 42rem;
+}
+
+.max-w-xl {
+  max-width: 36rem;
+}
+
+.w-full {
+  width: 100%;
+}
+
+/* Transicoes suaves */
+.transition-smooth {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Grid masonry helper */
+.masonry-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+
+@media (max-width: 1024px) {
+  .masonry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .masonry-grid {
+    grid-template-columns: 1fr;
+  }
 }

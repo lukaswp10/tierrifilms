@@ -1,32 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 
 export default function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { label: "Inicio", href: "#" },
-    { label: "Sobre", href: "#sobre" },
-    { label: "Portfolio", href: "#portfolio" },
-    { label: "Servicos", href: "#servicos" },
-    { label: "Contato", href: "#contato" },
+    { label: "INICIO", href: "#" },
+    { label: "SOBRE", href: "#sobre" },
+    { label: "CASES", href: "#portfolio" },
+    { label: "SERVICOS", href: "#servicos" },
+    { label: "CONTATO", href: "#contato" },
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
-    setIsMobileMenuOpen(false);
+    setIsOpen(false);
     
     if (href === "#") {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -38,68 +29,35 @@ export default function Navbar() {
 
   return (
     <>
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled 
-            ? 'bg-black/90 backdrop-blur-md border-b border-white/10' 
-            : 'bg-transparent'
-        }`}
+      {/* Botao Menu - fixo no canto */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed top-6 right-6 z-50 w-12 h-12 flex items-center justify-center text-white hover:text-gray-400 transition-colors"
+        aria-label="Menu"
       >
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center justify-between h-20">
-            <a 
-              href="#" 
-              onClick={(e) => handleNavClick(e, "#")}
-              className="text-2xl font-bold"
-              style={{ fontFamily: "'Bebas Neue', sans-serif" }}
-            >
-              <span className="text-white">TIERRI</span>
-              <span className="text-[#c9a227]">FILMS</span>
-            </a>
+        {isOpen ? <X size={28} /> : <Menu size={28} />}
+      </button>
 
-            <div className="hidden md:flex items-center gap-8">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={(e) => handleNavClick(e, link.href)}
-                  className="text-gray-300 hover:text-white transition-colors text-sm tracking-wide uppercase"
-                >
-                  {link.label}
-                </a>
-              ))}
-              <a
-                href="#contato"
-                onClick={(e) => handleNavClick(e, "#contato")}
-                className="bg-[#c9a227] hover:bg-[#e6b82e] text-black font-semibold px-5 py-2 rounded-full text-sm transition-all hover:scale-105"
-              >
-                Orcamento
-              </a>
-            </div>
+      {/* Logo fixo */}
+      <a 
+        href="#"
+        onClick={(e) => handleNavClick(e, "#")}
+        className="fixed top-6 left-6 z-50 text-lg font-light tracking-[0.3em] text-white hover:text-gray-400 transition-colors"
+      >
+        TF
+      </a>
 
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden w-10 h-10 flex items-center justify-center text-white"
-            >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-        </div>
-      </motion.nav>
-
+      {/* Menu fullscreen */}
       <AnimatePresence>
-        {isMobileMenuOpen && (
+        {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-40 bg-black/98 backdrop-blur-lg md:hidden pt-24"
+            className="fixed inset-0 z-40 bg-black flex items-center justify-center"
           >
-            <div className="flex flex-col items-center gap-8 p-8">
+            <nav className="text-center">
               {navLinks.map((link, index) => (
                 <motion.a
                   key={link.label}
@@ -108,23 +66,12 @@ export default function Navbar() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="text-2xl text-gray-300 hover:text-white transition-colors tracking-wide uppercase"
-                  style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+                  className="block text-3xl md:text-5xl font-light tracking-[0.2em] text-white hover:text-gray-500 transition-colors py-4"
                 >
                   {link.label}
                 </motion.a>
               ))}
-              <motion.a
-                href="#contato"
-                onClick={(e) => handleNavClick(e, "#contato")}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: navLinks.length * 0.1 }}
-                className="bg-[#c9a227] hover:bg-[#e6b82e] text-black font-semibold px-8 py-3 rounded-full text-lg transition-all mt-4"
-              >
-                Solicitar Orcamento
-              </motion.a>
-            </div>
+            </nav>
           </motion.div>
         )}
       </AnimatePresence>
