@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
+import { LogoText } from './Logo';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,9 +43,9 @@ export default function Navbar() {
       <a 
         href="#"
         onClick={(e) => handleNavClick(e, "#")}
-        className="fixed top-6 left-6 z-50 text-lg font-light tracking-[0.3em] text-white hover:text-gray-400 transition-colors"
+        className="fixed top-6 left-6 z-50 hover:opacity-70 transition-opacity"
       >
-        TF
+        <LogoText size="sm" />
       </a>
 
       {/* Menu fullscreen */}
