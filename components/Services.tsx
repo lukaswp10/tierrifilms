@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
 
@@ -34,49 +34,68 @@ export default function Services() {
     <section id="servicos" className="w-full py-12 md:py-16 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
       {/* Titulo PORQUE A TIERRIFILMS em outline gigante */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        initial={{ opacity: 0, x: -50 }}
+        animate={isInView ? { opacity: 1, x: 0 } : {}}
         transition={{ duration: 0.8 }}
         className="mb-16"
       >
         <h2 className="title-large text-outline leading-none">PORQUE</h2>
-        <h2 className="title-large text-outline leading-none">A TIERRIFILMS</h2>
+        <motion.h2 
+          className="title-large text-outline leading-none"
+          initial={{ opacity: 0, x: -50 }}
+          animate={isInView ? { opacity: 1, x: 0 } : {}}
+          transition={{ delay: 0.2, duration: 0.8 }}
+        >
+          A TIERRIFILMS
+        </motion.h2>
       </motion.div>
 
-      {/* Conteudo do slide ativo */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={isInView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        className="max-w-2xl mb-12"
-      >
-        <h3 className="text-sm md:text-base font-normal tracking-[0.2em] uppercase mb-4">
-          {diferenciais[activeSlide].title}
-        </h3>
-        <p className="text-xl md:text-2xl font-normal mb-6">
-          {diferenciais[activeSlide].subtitle}
-        </p>
-        <p className="text-gray-400 text-base md:text-lg font-light leading-relaxed">
-          {diferenciais[activeSlide].description}
-        </p>
-      </motion.div>
+      {/* Conteudo do slide ativo com animacao */}
+      <div className="max-w-2xl mb-12 min-h-[200px]">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeSlide}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.4 }}
+          >
+            <h3 className="text-sm md:text-base font-normal tracking-[0.2em] uppercase mb-4">
+              {diferenciais[activeSlide].title}
+            </h3>
+            <p className="text-xl md:text-2xl font-normal mb-6">
+              {diferenciais[activeSlide].subtitle}
+            </p>
+            <p className="text-gray-400 text-base md:text-lg font-light leading-relaxed">
+              {diferenciais[activeSlide].description}
+            </p>
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
       {/* Navegacao do carrossel */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={isInView ? { opacity: 1 } : {}}
+        initial={{ opacity: 0, y: 20 }}
+        animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8, delay: 0.4 }}
-        className="flex gap-4"
+        className="flex gap-6"
       >
         {diferenciais.map((_, index) => (
           <button
             key={index}
             onClick={() => setActiveSlide(index)}
-            className={`text-sm font-light transition-colors duration-300 ${
+            className={`relative text-sm font-light transition-all duration-300 ${
               activeSlide === index ? 'text-white' : 'text-gray-600 hover:text-gray-400'
             }`}
           >
             0{index + 1}
+            {activeSlide === index && (
+              <motion.div
+                layoutId="activeIndicator"
+                className="absolute -bottom-2 left-0 right-0 h-px bg-white"
+                transition={{ duration: 0.3 }}
+              />
+            )}
           </button>
         ))}
       </motion.div>

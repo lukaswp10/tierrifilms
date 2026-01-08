@@ -59,15 +59,15 @@ const projects: Project[] = [
 
 export default function Portfolio() {
   const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
   const [hoveredProject, setHoveredProject] = useState<number | null>(null);
 
   return (
     <section id="portfolio" className="w-full py-12 md:py-20 bg-black" ref={ref}>
       {/* Titulo CASES em outline gigante */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        initial={{ opacity: 0, x: -50 }}
+        animate={isInView ? { opacity: 1, x: 0 } : {}}
         transition={{ duration: 0.8 }}
         className="px-4 md:px-8 lg:px-16 mb-8 md:mb-12"
       >
@@ -75,18 +75,17 @@ export default function Portfolio() {
       </motion.div>
 
       {/* Grid de projetos - estilo masonry */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={isInView ? { opacity: 1 } : {}}
-        transition={{ duration: 0.8, delay: 0.2 }}
-        className="masonry-grid"
-      >
-        {projects.map((project) => (
-          <div
+      <div className="masonry-grid">
+        {projects.map((project, index) => (
+          <motion.div
             key={project.id}
+            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+            animate={isInView ? { opacity: 1, scale: 1, y: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.1 + index * 0.1 }}
             className="relative aspect-[4/3] overflow-hidden cursor-pointer group"
             onMouseEnter={() => setHoveredProject(project.id)}
             onMouseLeave={() => setHoveredProject(null)}
+            whileHover={{ scale: 1.02 }}
           >
             {/* Imagem de fundo */}
             <div 
@@ -100,8 +99,8 @@ export default function Portfolio() {
             }`} />
             
             {/* Conteudo - sempre visivel no mobile, hover no desktop */}
-            <div className={`absolute inset-0 p-6 flex flex-col justify-end transition-opacity duration-300 md:opacity-0 ${
-              hoveredProject === project.id ? 'md:opacity-100' : ''
+            <div className={`absolute inset-0 p-6 flex flex-col justify-end transition-all duration-300 md:opacity-0 md:translate-y-4 ${
+              hoveredProject === project.id ? 'md:opacity-100 md:translate-y-0' : ''
             }`}>
               <h3 className="text-lg md:text-xl lg:text-2xl font-normal uppercase mb-2">
                 {project.title}
@@ -110,9 +109,9 @@ export default function Portfolio() {
                 {project.description}
               </p>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </motion.div>
+      </div>
     </section>
   );
 }

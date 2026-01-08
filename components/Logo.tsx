@@ -77,4 +77,3 @@ export function LogoText({ size = 'md', className = '' }: LogoProps) {
     </span>
   );
 }
-
