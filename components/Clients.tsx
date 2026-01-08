@@ -32,7 +32,7 @@ export default function Clients() {
   const row3 = partners.filter(p => p.row === 3);
 
   return (
-    <section className="w-full py-20 md:py-28 bg-white" ref={ref}>
+    <section className="w-full py-12 md:py-20 bg-white" ref={ref}>
       {/* Row 1 */}
       <motion.div
         initial={{ opacity: 0 }}

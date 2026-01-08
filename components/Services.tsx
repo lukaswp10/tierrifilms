@@ -31,7 +31,7 @@ export default function Services() {
   const [activeSlide, setActiveSlide] = useState(0);
 
   return (
-    <section id="servicos" className="w-full py-16 md:py-20 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
+    <section id="servicos" className="w-full py-12 md:py-16 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
       {/* Titulo PORQUE A TIERRIFILMS em outline gigante */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}

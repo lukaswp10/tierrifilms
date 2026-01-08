@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 export default function Hero() {
   return (
-    <section className="w-full min-h-screen flex flex-col justify-center items-center px-4 md:px-8 lg:px-16 py-20 bg-black">
+    <section className="w-full min-h-[85vh] md:min-h-screen flex flex-col justify-center items-center px-4 md:px-8 lg:px-16 py-12 md:py-20 bg-black">
       {/* Titulo Principal - Centralizado como sand.black */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
@@ -25,7 +25,7 @@ export default function Hero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.4 }}
-        className="mt-16 text-center"
+        className="mt-8 md:mt-16 text-center"
       >
         <span className="text-2xl md:text-3xl font-light tracking-[0.3em]">
           TF

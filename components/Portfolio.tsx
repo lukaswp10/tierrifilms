@@ -63,13 +63,13 @@ export default function Portfolio() {
   const [hoveredProject, setHoveredProject] = useState<number | null>(null);
 
   return (
-    <section id="portfolio" className="w-full py-24 bg-black" ref={ref}>
+    <section id="portfolio" className="w-full py-12 md:py-20 bg-black" ref={ref}>
       {/* Titulo CASES em outline gigante */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
-        className="px-4 md:px-8 lg:px-16 mb-16"
+        className="px-4 md:px-8 lg:px-16 mb-8 md:mb-12"
       >
         <h2 className="title-large text-outline">CASES</h2>
       </motion.div>

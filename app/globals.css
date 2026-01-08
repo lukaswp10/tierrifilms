@@ -64,8 +64,8 @@ body {
 /* Classe para texto outline (so contorno) */
 .text-outline {
   color: transparent;
-  -webkit-text-stroke: 1px var(--white);
-  text-stroke: 1px var(--white);
+  -webkit-text-stroke: 1.5px var(--white);
+  text-stroke: 1.5px var(--white);
 }
 
 .text-outline-thin {

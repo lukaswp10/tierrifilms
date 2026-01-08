@@ -18,13 +18,13 @@ export default function Stats() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <section className="w-full py-24 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
+    <section className="w-full py-12 md:py-20 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
       {/* Titulo NUMEROS em outline + ano */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.8 }}
-        className="text-center mb-20"
+        className="text-center mb-10 md:mb-16"
       >
         <h2 className="title-large text-outline text-italic">NUMEROS</h2>
         <p className="title-medium text-outline mt-4">{currentYear}</p>

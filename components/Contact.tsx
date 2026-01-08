@@ -60,7 +60,7 @@ ${formState.projeto}`.trim();
   };
 
   return (
-    <section id="contato" className="w-full py-24 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
+    <section id="contato" className="w-full py-16 md:py-24 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
       {/* Titulo BORA FALAR! */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}

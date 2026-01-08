@@ -10,7 +10,7 @@ export default function Showreel() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="w-full py-20 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
+    <section className="w-full py-12 md:py-20 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
       <div className="max-w-6xl mx-auto">
         {/* Video Player Placeholder */}
         <motion.div
