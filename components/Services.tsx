@@ -40,7 +40,7 @@ export default function Services() {
         className="mb-16"
       >
         <h2 className="title-large text-outline leading-none">PORQUE</h2>
-        <motion.h2 
+        <motion.h2
           className="title-large text-outline leading-none"
           initial={{ opacity: 0, x: -50 }}
           animate={isInView ? { opacity: 1, x: 0 } : {}}
