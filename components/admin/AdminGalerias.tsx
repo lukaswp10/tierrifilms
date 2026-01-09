@@ -12,337 +12,77 @@ import {
 type MobileView = 'list' | 'details';
 type MidiaTab = 'todas' | 'fotos' | 'videos';
 
-export default function AdminGalerias() {
-  const { isMobile } = useMediaQuery();
-  const [galerias, setGalerias] = useState<Galeria[]>([]);
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [selectedGaleria, setSelectedGaleria] = useState<Galeria | null>(null);
-  const [midias, setMidias] = useState<GaleriaFoto[]>([]);
-  const [showModal, setShowModal] = useState(false);
-  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
-  const [showVideoModal, setShowVideoModal] = useState(false);
-  const [editingGaleria, setEditingGaleria] = useState<Partial<Galeria> | null>(null);
-  const [mobileView, setMobileView] = useState<MobileView>('list');
-  const [filtroCategoria, setFiltroCategoria] = useState<string>('todas');
-  const [midiaTab, setMidiaTab] = useState<MidiaTab>('todas');
-  const [novaCategoria, setNovaCategoria] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
-  
-  const selectedGaleriaRef = useRef<Galeria | null>(null);
-  const midiasRef = useRef<GaleriaFoto[]>([]);
+// ==================== INTERFACES ====================
 
-  useEffect(() => {
-    selectedGaleriaRef.current = selectedGaleria;
-  }, [selectedGaleria]);
+interface GaleriasListProps {
+  isMobile: boolean;
+  galerias: Galeria[];
+  categorias: Categoria[];
+  galeriasFiltradas: Galeria[];
+  selectedGaleria: Galeria | null;
+  filtroCategoria: string;
+  principaisCount: number;
+  maxPrincipais: number;
+  selectClass: string;
+  onSelectGaleria: (galeria: Galeria) => void;
+  onDeleteGaleria: (id: string) => void;
+  onNewGaleria: () => void;
+  onOpenCategorias: () => void;
+  onFilterChange: (value: string) => void;
+  getYouTubeThumbnail: (url: string) => string | null;
+}
 
-  useEffect(() => {
-    midiasRef.current = midias;
-  }, [midias]);
+interface GaleriaDetailsProps {
+  isMobile: boolean;
+  selectedGaleria: Galeria | null;
+  midias: GaleriaFoto[];
+  midiasFiltradas: GaleriaFoto[];
+  midiaTab: MidiaTab;
+  fotosCount: number;
+  videosCount: number;
+  onBackToList: () => void;
+  onEditGaleria: () => void;
+  onUpdateCapa: (url: string, tipo: 'imagem' | 'video') => void;
+  onUploadComplete: (result: { info?: { secure_url?: string } }) => void;
+  onOpenVideoModal: () => void;
+  onMidiaTabChange: (tab: MidiaTab) => void;
+  onDeleteMidia: (id: string) => void;
+  isYouTubeUrl: (url: string) => boolean;
+  getYouTubeThumbnail: (url: string) => string | null;
+}
 
-  useEffect(() => {
-    loadGalerias();
-    loadCategorias();
-  }, []);
+// ==================== COMPONENTES EXTERNOS ====================
 
-  // ==================== API CALLS ====================
-
-  const loadGalerias = async () => {
-    try {
-      const res = await fetch('/api/admin/galerias');
-      if (res.ok) {
-        const data = await res.json();
-        setGalerias(data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar galerias:', error);
-    }
-    setLoading(false);
-  };
-
-  const loadCategorias = async () => {
-    try {
-      const res = await fetch('/api/admin/categorias');
-      if (res.ok) {
-        const data = await res.json();
-        setCategorias(data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
-    }
-  };
-
-  const loadMidias = async (galeriaId: string) => {
-    try {
-      const res = await fetch(`/api/admin/galerias/fotos?galeria_id=${galeriaId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMidias(data);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar midias:', error);
-    }
-  };
-
-  const handleSelectGaleria = async (galeria: Galeria) => {
-    setSelectedGaleria(galeria);
-    setMidiaTab('todas');
-    await loadMidias(galeria.id);
-    if (isMobile) {
-      setMobileView('details');
-    }
-  };
-
-  const handleBackToList = () => {
-    setMobileView('list');
-    setSelectedGaleria(null);
-    setMidias([]);
-  };
-
-  const handleSaveGaleria = async () => {
-    if (!editingGaleria) return;
-    setSaving(true);
-
-    try {
-      let response;
-      
-      if (editingGaleria.id) {
-        response = await fetch('/api/admin/galerias', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editingGaleria),
-        });
-      } else {
-        response = await fetch('/api/admin/galerias', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...editingGaleria,
-            ordem: galerias.length + 1
-          }),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(errorData.error || 'Erro ao salvar galeria');
-        setSaving(false);
-        return;
-      }
-
-      setShowModal(false);
-      setEditingGaleria(null);
-      await loadGalerias();
-      
-      if (editingGaleria.id && selectedGaleria?.id === editingGaleria.id) {
-        const res = await fetch('/api/admin/galerias');
-        if (res.ok) {
-          const data = await res.json();
-          const updated = data.find((g: Galeria) => g.id === editingGaleria.id);
-          if (updated) setSelectedGaleria(updated);
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao salvar galeria:', error);
-      alert('Erro ao salvar galeria');
-    }
-    setSaving(false);
-  };
-
-  const handleDeleteGaleria = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta galeria e todas as suas midias?')) {
-      try {
-        await fetch(`/api/admin/galerias?id=${id}`, { method: 'DELETE' });
-        await loadGalerias();
-        if (selectedGaleria?.id === id) {
-          setSelectedGaleria(null);
-          setMidias([]);
-          if (isMobile) setMobileView('list');
-        }
-      } catch (error) {
-        console.error('Erro ao deletar galeria:', error);
-      }
-    }
-  };
-
-  const handleUploadComplete = useCallback(async (result: { info?: { secure_url?: string } }) => {
-    const currentGaleria = selectedGaleriaRef.current;
-    const currentMidias = midiasRef.current;
-    
-    if (!currentGaleria || !result.info?.secure_url) return;
-    
-    try {
-      await fetch('/api/admin/galerias/fotos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          galeria_id: currentGaleria.id,
-          foto_url: result.info.secure_url,
-          ordem: currentMidias.length + 1,
-          tipo: 'foto'
-        }),
-      });
-      
-      await loadMidias(currentGaleria.id);
-    } catch (error) {
-      console.error('Erro ao adicionar foto:', error);
-    }
-  }, []);
-
-  const handleAddVideo = async () => {
-    if (!selectedGaleria || !videoUrl.trim()) return;
-    
-    let finalUrl = videoUrl.trim();
-    const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
-    if (youtubeMatch) {
-      finalUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
-    }
-    
-    try {
-      await fetch('/api/admin/galerias/fotos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          galeria_id: selectedGaleria.id,
-          foto_url: finalUrl,
-          ordem: midias.length + 1,
-          tipo: 'video'
-        }),
-      });
-      
-      await loadMidias(selectedGaleria.id);
-      setVideoUrl('');
-      setShowVideoModal(false);
-    } catch (error) {
-      console.error('Erro ao adicionar video:', error);
-    }
-  };
-
-  const handleDeleteMidia = async (midiaId: string) => {
-    if (confirm('Excluir esta midia?')) {
-      try {
-        await fetch(`/api/admin/galerias/fotos?id=${midiaId}`, { method: 'DELETE' });
-        if (selectedGaleria) await loadMidias(selectedGaleria.id);
-      } catch (error) {
-        console.error('Erro ao deletar midia:', error);
-      }
-    }
-  };
-
-  const handleUpdateCapa = useCallback(async (url: string, tipo: 'imagem' | 'video' = 'imagem') => {
-    const currentGaleria = selectedGaleriaRef.current;
-    if (!currentGaleria) return;
-    
-    try {
-      await fetch('/api/admin/galerias', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: currentGaleria.id,
-          capa_url: url,
-          capa_tipo: tipo
-        }),
-      });
-      
-      setSelectedGaleria(prev => prev ? { ...prev, capa_url: url, capa_tipo: tipo } : null);
-      await loadGalerias();
-    } catch (error) {
-      console.error('Erro ao atualizar capa:', error);
-    }
-  }, []);
-
-  const handleAddCategoria = async () => {
-    if (!novaCategoria.trim()) return;
-    
-    try {
-      const res = await fetch('/api/admin/categorias', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: novaCategoria.trim() }),
-      });
-      
-      if (!res.ok) {
-        const data = await res.json();
-        alert(data.error || 'Erro ao criar categoria');
-        return;
-      }
-      
-      await loadCategorias();
-      setNovaCategoria('');
-    } catch (error) {
-      console.error('Erro ao criar categoria:', error);
-    }
-  };
-
-  const handleDeleteCategoria = async (id: string) => {
-    if (confirm('Excluir esta categoria?')) {
-      try {
-        const res = await fetch(`/api/admin/categorias?id=${id}`, { method: 'DELETE' });
-        if (!res.ok) {
-          const data = await res.json();
-          alert(data.error || 'Erro ao excluir categoria');
-          return;
-        }
-        await loadCategorias();
-      } catch (error) {
-        console.error('Erro ao excluir categoria:', error);
-      }
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">Carregando...</div>
-      </div>
-    );
-  }
-
-  // Estilos
-  const inputClass = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-white transition-all";
-  const selectClass = "w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-white transition-all text-sm appearance-none cursor-pointer";
-
-  // Filtrar galerias
-  const galeriasFiltradas = filtroCategoria === 'todas' 
-    ? galerias 
-    : galerias.filter(g => g.categoria === filtroCategoria);
-
-  // Filtrar midias
-  const midiasFiltradas = midiaTab === 'todas' 
-    ? midias 
-    : midias.filter(m => m.tipo === (midiaTab === 'fotos' ? 'foto' : 'video'));
-
-  // Contadores
-  const principaisCount = galerias.filter(g => g.is_principal).length;
-  const MAX_PRINCIPAIS = 6;
-  const fotosCount = midias.filter(m => m.tipo !== 'video').length;
-  const videosCount = midias.filter(m => m.tipo === 'video').length;
-
-  const isYouTubeUrl = (url: string) => url.includes('youtube.com') || url.includes('youtu.be');
-
-  const getYouTubeThumbnail = (url: string) => {
-    const match = url.match(/(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-    return match ? `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg` : null;
-  };
-
-  // ==================== LISTA DE GALERIAS ====================
-  const GaleriasList = () => (
+function GaleriasList({
+  isMobile,
+  galerias,
+  categorias,
+  galeriasFiltradas,
+  selectedGaleria,
+  filtroCategoria,
+  principaisCount,
+  maxPrincipais,
+  selectClass,
+  onSelectGaleria,
+  onDeleteGaleria,
+  onNewGaleria,
+  onOpenCategorias,
+  onFilterChange,
+  getYouTubeThumbnail,
+}: GaleriasListProps) {
+  return (
     <div className={isMobile ? '' : 'w-80 flex-shrink-0 border-r border-gray-800 pr-6'}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold">Galerias</h2>
-          <p className={`text-xs mt-0.5 ${principaisCount >= MAX_PRINCIPAIS ? 'text-amber-400' : 'text-gray-500'}`}>
+          <p className={`text-xs mt-0.5 ${principaisCount >= maxPrincipais ? 'text-amber-400' : 'text-gray-500'}`}>
             <Star className="w-3 h-3 inline mr-1" />
-            {principaisCount}/{MAX_PRINCIPAIS} na Home
+            {principaisCount}/{maxPrincipais} na Home
           </p>
         </div>
         <button
-          onClick={() => {
-            setEditingGaleria({ nome: '', categoria: '', descricao: '', capa_tipo: 'imagem' });
-            setShowModal(true);
-          }}
+          onClick={onNewGaleria}
           className="p-2.5 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors"
           title="Nova Galeria"
         >
@@ -355,7 +95,7 @@ export default function AdminGalerias() {
         <div className="relative flex-1">
           <select
             value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value)}
+            onChange={(e) => onFilterChange(e.target.value)}
             className={selectClass}
           >
             <option value="todas">Todas ({galerias.length})</option>
@@ -371,7 +111,7 @@ export default function AdminGalerias() {
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
         </div>
         <button
-          onClick={() => setShowCategoriaModal(true)}
+          onClick={onOpenCategorias}
           className="p-2.5 bg-gray-800 text-gray-400 rounded-xl hover:bg-gray-700 hover:text-white transition-colors"
           title="Gerenciar Categorias"
         >
@@ -390,7 +130,7 @@ export default function AdminGalerias() {
           galeriasFiltradas.map((galeria) => (
             <div
               key={galeria.id}
-              onClick={() => handleSelectGaleria(galeria)}
+              onClick={() => onSelectGaleria(galeria)}
               className={`p-3 rounded-xl cursor-pointer transition-all ${
                 selectedGaleria?.id === galeria.id && !isMobile
                   ? 'bg-white text-black'
@@ -434,9 +174,9 @@ export default function AdminGalerias() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteGaleria(galeria.id);
+                    onDeleteGaleria(galeria.id);
                   }}
-                  className="p-1.5 text-gray-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                  className="p-1.5 text-gray-500 hover:text-red-400 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -447,16 +187,34 @@ export default function AdminGalerias() {
       </div>
     </div>
   );
+}
 
-  // ==================== DETALHES DA GALERIA ====================
-  const GaleriaDetails = () => (
+function GaleriaDetails({
+  isMobile,
+  selectedGaleria,
+  midias,
+  midiasFiltradas,
+  midiaTab,
+  fotosCount,
+  videosCount,
+  onBackToList,
+  onEditGaleria,
+  onUpdateCapa,
+  onUploadComplete,
+  onOpenVideoModal,
+  onMidiaTabChange,
+  onDeleteMidia,
+  isYouTubeUrl,
+  getYouTubeThumbnail,
+}: GaleriaDetailsProps) {
+  return (
     <div className={isMobile ? '' : 'flex-1 min-w-0 pl-6'}>
       {selectedGaleria ? (
         <div className="space-y-6">
           {/* Header Mobile */}
           {isMobile && (
             <button
-              onClick={handleBackToList}
+              onClick={onBackToList}
               className="flex items-center gap-2 text-gray-400 hover:text-white -ml-1"
             >
               <ChevronLeft className="w-5 h-5" />
@@ -474,10 +232,7 @@ export default function AdminGalerias() {
               )}
             </div>
             <button
-              onClick={() => {
-                setEditingGaleria(selectedGaleria);
-                setShowModal(true);
-              }}
+              onClick={onEditGaleria}
               className="p-2.5 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors flex-shrink-0"
             >
               <Edit2 className="w-4 h-4" />
@@ -524,7 +279,7 @@ export default function AdminGalerias() {
                   options={{ folder: 'tierrifilms/capas' }}
                   onSuccess={(result) => {
                     const r = result as { info?: { secure_url?: string } };
-                    if (r.info?.secure_url) handleUpdateCapa(r.info.secure_url, 'imagem');
+                    if (r.info?.secure_url) onUpdateCapa(r.info.secure_url, 'imagem');
                   }}
                 >
                   {({ open }) => (
@@ -543,7 +298,7 @@ export default function AdminGalerias() {
                     if (url) {
                       const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
                       if (youtubeMatch) {
-                        handleUpdateCapa(`https://www.youtube.com/embed/${youtubeMatch[1]}`, 'video');
+                        onUpdateCapa(`https://www.youtube.com/embed/${youtubeMatch[1]}`, 'video');
                       } else {
                         alert('URL do YouTube invalida');
                       }
@@ -570,7 +325,7 @@ export default function AdminGalerias() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => setShowVideoModal(true)}
+                  onClick={onOpenVideoModal}
                   className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
                 >
                   <Video className="w-4 h-4" />
@@ -586,7 +341,7 @@ export default function AdminGalerias() {
                   }}
                   onSuccess={(result) => {
                     const r = result as { info?: { secure_url?: string } };
-                    handleUploadComplete(r);
+                    onUploadComplete(r);
                   }}
                 >
                   {({ open }) => (
@@ -608,7 +363,7 @@ export default function AdminGalerias() {
                 {(['todas', 'fotos', 'videos'] as MidiaTab[]).map(tab => (
                   <button
                     key={tab}
-                    onClick={() => setMidiaTab(tab)}
+                    onClick={() => onMidiaTabChange(tab)}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                       midiaTab === tab 
                         ? 'bg-white text-black' 
@@ -645,7 +400,7 @@ export default function AdminGalerias() {
                       />
                     )}
                     <button
-                      onClick={() => handleDeleteMidia(midia.id)}
+                      onClick={() => onDeleteMidia(midia.id)}
                       className="absolute top-2 right-2 w-7 h-7 bg-black/70 hover:bg-red-500 rounded-full text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -670,18 +425,423 @@ export default function AdminGalerias() {
       )}
     </div>
   );
+}
+
+// ==================== COMPONENTE PRINCIPAL ====================
+
+export default function AdminGalerias() {
+  const { isMobile } = useMediaQuery();
+  const [galerias, setGalerias] = useState<Galeria[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [selectedGaleria, setSelectedGaleria] = useState<Galeria | null>(null);
+  const [midias, setMidias] = useState<GaleriaFoto[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [editingGaleria, setEditingGaleria] = useState<Partial<Galeria> | null>(null);
+  const [mobileView, setMobileView] = useState<MobileView>('list');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>('todas');
+  const [midiaTab, setMidiaTab] = useState<MidiaTab>('todas');
+  const [novaCategoria, setNovaCategoria] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+
+  const selectedGaleriaRef = useRef<Galeria | null>(null);
+  const midiasRef = useRef<GaleriaFoto[]>([]);
+
+  useEffect(() => {
+    selectedGaleriaRef.current = selectedGaleria;
+  }, [selectedGaleria]);
+
+  useEffect(() => {
+    midiasRef.current = midias;
+  }, [midias]);
+
+  useEffect(() => {
+    loadGalerias();
+    loadCategorias();
+  }, []);
+
+  // ==================== HELPERS ====================
+
+  const isYouTubeUrl = (url: string) => url.includes('youtube.com') || url.includes('youtu.be');
+
+  const getYouTubeThumbnail = useCallback((url: string) => {
+    const match = url.match(/(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    return match ? `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg` : null;
+  }, []);
+
+  // ==================== API CALLS ====================
+
+  const loadGalerias = async () => {
+    try {
+      const res = await fetch('/api/admin/galerias');
+      if (res.ok) {
+        const data = await res.json();
+        setGalerias(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar galerias:', error);
+    }
+    setLoading(false);
+  };
+
+  const loadCategorias = async () => {
+    try {
+      const res = await fetch('/api/admin/categorias');
+      if (res.ok) {
+        const data = await res.json();
+        setCategorias(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const loadMidias = async (galeriaId: string) => {
+    try {
+      const res = await fetch(`/api/admin/galerias/fotos?galeria_id=${galeriaId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMidias(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar midias:', error);
+    }
+  };
+
+  // ==================== HANDLERS ====================
+
+  const handleSelectGaleria = useCallback(async (galeria: Galeria) => {
+    setSelectedGaleria(galeria);
+    setMidiaTab('todas');
+    await loadMidias(galeria.id);
+    if (isMobile) {
+      setMobileView('details');
+    }
+  }, [isMobile]);
+
+  const handleBackToList = useCallback(() => {
+    setMobileView('list');
+    setSelectedGaleria(null);
+    setMidias([]);
+  }, []);
+
+  const handleSaveGaleria = async () => {
+    if (!editingGaleria) return;
+    setSaving(true);
+
+    try {
+      let response;
+
+      if (editingGaleria.id) {
+        response = await fetch('/api/admin/galerias', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(editingGaleria),
+        });
+      } else {
+        response = await fetch('/api/admin/galerias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...editingGaleria,
+            ordem: galerias.length + 1
+          }),
+        });
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.error || 'Erro ao salvar galeria');
+        setSaving(false);
+        return;
+      }
+
+      setShowModal(false);
+      setEditingGaleria(null);
+      await loadGalerias();
+
+      if (editingGaleria.id && selectedGaleria?.id === editingGaleria.id) {
+        const res = await fetch('/api/admin/galerias');
+        if (res.ok) {
+          const data = await res.json();
+          const updated = data.find((g: Galeria) => g.id === editingGaleria.id);
+          if (updated) setSelectedGaleria(updated);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao salvar galeria:', error);
+      alert('Erro ao salvar galeria');
+    }
+    setSaving(false);
+  };
+
+  const handleDeleteGaleria = useCallback(async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta galeria e todas as suas midias?')) {
+      try {
+        await fetch(`/api/admin/galerias?id=${id}`, { method: 'DELETE' });
+        await loadGalerias();
+        if (selectedGaleriaRef.current?.id === id) {
+          setSelectedGaleria(null);
+          setMidias([]);
+          setMobileView('list');
+        }
+      } catch (error) {
+        console.error('Erro ao deletar galeria:', error);
+      }
+    }
+  }, []);
+
+  const handleUploadComplete = useCallback(async (result: { info?: { secure_url?: string } }) => {
+    const currentGaleria = selectedGaleriaRef.current;
+    const currentMidias = midiasRef.current;
+
+    if (!currentGaleria || !result.info?.secure_url) return;
+
+    try {
+      await fetch('/api/admin/galerias/fotos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          galeria_id: currentGaleria.id,
+          foto_url: result.info.secure_url,
+          ordem: currentMidias.length + 1,
+          tipo: 'foto'
+        }),
+      });
+
+      await loadMidias(currentGaleria.id);
+    } catch (error) {
+      console.error('Erro ao adicionar foto:', error);
+    }
+  }, []);
+
+  const handleAddVideo = async () => {
+    if (!selectedGaleria || !videoUrl.trim()) return;
+
+    let finalUrl = videoUrl.trim();
+    const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
+    if (youtubeMatch) {
+      finalUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    }
+
+    try {
+      await fetch('/api/admin/galerias/fotos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          galeria_id: selectedGaleria.id,
+          foto_url: finalUrl,
+          ordem: midias.length + 1,
+          tipo: 'video'
+        }),
+      });
+
+      await loadMidias(selectedGaleria.id);
+      setVideoUrl('');
+      setShowVideoModal(false);
+    } catch (error) {
+      console.error('Erro ao adicionar video:', error);
+    }
+  };
+
+  const handleDeleteMidia = useCallback(async (midiaId: string) => {
+    if (confirm('Excluir esta midia?')) {
+      try {
+        await fetch(`/api/admin/galerias/fotos?id=${midiaId}`, { method: 'DELETE' });
+        const currentGaleria = selectedGaleriaRef.current;
+        if (currentGaleria) await loadMidias(currentGaleria.id);
+      } catch (error) {
+        console.error('Erro ao deletar midia:', error);
+      }
+    }
+  }, []);
+
+  const handleUpdateCapa = useCallback(async (url: string, tipo: 'imagem' | 'video' = 'imagem') => {
+    const currentGaleria = selectedGaleriaRef.current;
+    if (!currentGaleria) return;
+
+    try {
+      await fetch('/api/admin/galerias', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentGaleria.id,
+          capa_url: url,
+          capa_tipo: tipo
+        }),
+      });
+
+      setSelectedGaleria(prev => prev ? { ...prev, capa_url: url, capa_tipo: tipo } : null);
+      await loadGalerias();
+    } catch (error) {
+      console.error('Erro ao atualizar capa:', error);
+    }
+  }, []);
+
+  const handleAddCategoria = async () => {
+    if (!novaCategoria.trim()) return;
+
+    try {
+      const res = await fetch('/api/admin/categorias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: novaCategoria.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Erro ao criar categoria');
+        return;
+      }
+
+      await loadCategorias();
+      setNovaCategoria('');
+    } catch (error) {
+      console.error('Erro ao criar categoria:', error);
+    }
+  };
+
+  const handleDeleteCategoria = async (id: string) => {
+    if (confirm('Excluir esta categoria?')) {
+      try {
+        const res = await fetch(`/api/admin/categorias?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const data = await res.json();
+          alert(data.error || 'Erro ao excluir categoria');
+          return;
+        }
+        await loadCategorias();
+      } catch (error) {
+        console.error('Erro ao excluir categoria:', error);
+      }
+    }
+  };
+
+  // ==================== COMPUTED ====================
+
+  const inputClass = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-white transition-all";
+  const selectClass = "w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-white transition-all text-sm appearance-none cursor-pointer";
+
+  const galeriasFiltradas = filtroCategoria === 'todas'
+    ? galerias
+    : galerias.filter(g => g.categoria === filtroCategoria);
+
+  const midiasFiltradas = midiaTab === 'todas'
+    ? midias
+    : midias.filter(m => m.tipo === (midiaTab === 'fotos' ? 'foto' : 'video'));
+
+  const principaisCount = galerias.filter(g => g.is_principal).length;
+  const MAX_PRINCIPAIS = 6;
+  const fotosCount = midias.filter(m => m.tipo !== 'video').length;
+  const videosCount = midias.filter(m => m.tipo === 'video').length;
+
+  // ==================== LOADING ====================
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-400">Carregando...</div>
+      </div>
+    );
+  }
 
   // ==================== RENDER ====================
+
   return (
     <div>
       {isMobile ? (
         <div>
-          {mobileView === 'list' ? <GaleriasList /> : <GaleriaDetails />}
+          {mobileView === 'list' ? (
+            <GaleriasList
+              isMobile={isMobile}
+              galerias={galerias}
+              categorias={categorias}
+              galeriasFiltradas={galeriasFiltradas}
+              selectedGaleria={selectedGaleria}
+              filtroCategoria={filtroCategoria}
+              principaisCount={principaisCount}
+              maxPrincipais={MAX_PRINCIPAIS}
+              selectClass={selectClass}
+              onSelectGaleria={handleSelectGaleria}
+              onDeleteGaleria={handleDeleteGaleria}
+              onNewGaleria={() => {
+                setEditingGaleria({ nome: '', categoria: '', descricao: '', capa_tipo: 'imagem' });
+                setShowModal(true);
+              }}
+              onOpenCategorias={() => setShowCategoriaModal(true)}
+              onFilterChange={setFiltroCategoria}
+              getYouTubeThumbnail={getYouTubeThumbnail}
+            />
+          ) : (
+            <GaleriaDetails
+              isMobile={isMobile}
+              selectedGaleria={selectedGaleria}
+              midias={midias}
+              midiasFiltradas={midiasFiltradas}
+              midiaTab={midiaTab}
+              fotosCount={fotosCount}
+              videosCount={videosCount}
+              onBackToList={handleBackToList}
+              onEditGaleria={() => {
+                setEditingGaleria(selectedGaleria);
+                setShowModal(true);
+              }}
+              onUpdateCapa={handleUpdateCapa}
+              onUploadComplete={handleUploadComplete}
+              onOpenVideoModal={() => setShowVideoModal(true)}
+              onMidiaTabChange={setMidiaTab}
+              onDeleteMidia={handleDeleteMidia}
+              isYouTubeUrl={isYouTubeUrl}
+              getYouTubeThumbnail={getYouTubeThumbnail}
+            />
+          )}
         </div>
       ) : (
         <div className="flex min-h-[600px]">
-          <GaleriasList />
-          <GaleriaDetails />
+            <GaleriasList
+              isMobile={isMobile}
+              galerias={galerias}
+              categorias={categorias}
+              galeriasFiltradas={galeriasFiltradas}
+              selectedGaleria={selectedGaleria}
+              filtroCategoria={filtroCategoria}
+              principaisCount={principaisCount}
+              maxPrincipais={MAX_PRINCIPAIS}
+              selectClass={selectClass}
+              onSelectGaleria={handleSelectGaleria}
+              onDeleteGaleria={handleDeleteGaleria}
+              onNewGaleria={() => {
+                setEditingGaleria({ nome: '', categoria: '', descricao: '', capa_tipo: 'imagem' });
+                setShowModal(true);
+              }}
+              onOpenCategorias={() => setShowCategoriaModal(true)}
+              onFilterChange={setFiltroCategoria}
+              getYouTubeThumbnail={getYouTubeThumbnail}
+            />
+            <GaleriaDetails
+              isMobile={isMobile}
+              selectedGaleria={selectedGaleria}
+              midias={midias}
+              midiasFiltradas={midiasFiltradas}
+              midiaTab={midiaTab}
+              fotosCount={fotosCount}
+              videosCount={videosCount}
+              onBackToList={handleBackToList}
+              onEditGaleria={() => {
+                setEditingGaleria(selectedGaleria);
+                setShowModal(true);
+              }}
+              onUpdateCapa={handleUpdateCapa}
+              onUploadComplete={handleUploadComplete}
+              onOpenVideoModal={() => setShowVideoModal(true)}
+              onMidiaTabChange={setMidiaTab}
+              onDeleteMidia={handleDeleteMidia}
+              isYouTubeUrl={isYouTubeUrl}
+              getYouTubeThumbnail={getYouTubeThumbnail}
+            />
         </div>
       )}
 
