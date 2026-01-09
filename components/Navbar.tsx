@@ -58,20 +58,22 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Botao Menu - fixo no canto */}
+      {/* Botao Menu - fixo no canto (com safe-area para notch) */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed top-6 right-6 z-50 w-12 h-12 flex items-center justify-center text-white hover:text-gray-400 transition-colors"
+        style={{ top: 'max(1.5rem, env(safe-area-inset-top, 1.5rem))' }}
         aria-label="Menu"
       >
         {isOpen ? <X size={28} /> : <Menu size={28} />}
       </button>
 
-      {/* Logo fixo */}
+      {/* Logo fixo (com safe-area para notch) */}
       <a 
         href="#"
         onClick={(e) => handleNavClick(e, "#")}
         className="fixed top-6 left-6 z-50 hover:opacity-70 transition-opacity"
+        style={{ top: 'max(1.5rem, env(safe-area-inset-top, 1.5rem))' }}
       >
         <LogoText size="sm" />
       </a>

@@ -40,6 +40,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nome e obrigatorio' }, { status: 400 });
     }
 
+    // Validar limite de 6 galerias principais ao criar
+    if (is_principal === true) {
+      const { count } = await supabaseAdmin
+        .from('galerias')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_principal', true);
+
+      if (count && count >= 6) {
+        return NextResponse.json({ 
+          error: 'Limite de 6 galerias na pagina inicial atingido' 
+        }, { status: 400 });
+      }
+    }
+
     // Gerar slug
     const slug = nome
       .toLowerCase()
@@ -85,6 +99,30 @@ export async function PUT(request: NextRequest) {
 
     if (!id) {
       return NextResponse.json({ error: 'ID e obrigatorio' }, { status: 400 });
+    }
+
+    // Validar limite de 6 galerias principais
+    if (is_principal === true) {
+      // Buscar galeria atual para ver se ja era principal
+      const { data: currentGaleria } = await supabaseAdmin
+        .from('galerias')
+        .select('is_principal')
+        .eq('id', id)
+        .single();
+
+      // Se nao era principal e quer virar, verificar limite
+      if (!currentGaleria?.is_principal) {
+        const { count } = await supabaseAdmin
+          .from('galerias')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_principal', true);
+
+        if (count && count >= 6) {
+          return NextResponse.json({ 
+            error: 'Limite de 6 galerias na pagina inicial atingido' 
+          }, { status: 400 });
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = {};

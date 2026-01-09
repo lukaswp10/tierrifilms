@@ -3,6 +3,7 @@ import { Oswald } from 'next/font/google';
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { ConfigsProvider } from "@/lib/ConfigsContext";
+import { createClient } from '@supabase/supabase-js';
 
 const oswald = Oswald({
   subsets: ['latin'],
@@ -11,10 +12,44 @@ const oswald = Oswald({
   variable: '--font-oswald',
 });
 
-export const metadata: Metadata = {
-  title: "TIERRIFILMS | Eternize o Real",
-  description: "Especialistas em captar momentos reais. Producao audiovisual para casamentos e eventos.",
-};
+// Busca configs do banco para metadata (server-side)
+async function getMetadataConfigs(): Promise<{ titulo: string; descricao: string }> {
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    
+    const { data } = await supabase
+      .from('configuracoes')
+      .select('chave, valor')
+      .in('chave', ['site_titulo', 'site_descricao']);
+    
+    const configs = (data || []).reduce((acc, item) => {
+      acc[item.chave] = item.valor || '';
+      return acc;
+    }, {} as Record<string, string>);
+    
+    return {
+      titulo: configs['site_titulo'] || 'TIERRIFILMS',
+      descricao: configs['site_descricao'] || 'Especialistas em captar momentos reais. Producao audiovisual para casamentos e eventos.',
+    };
+  } catch {
+    return {
+      titulo: 'TIERRIFILMS',
+      descricao: 'Especialistas em captar momentos reais. Producao audiovisual para casamentos e eventos.',
+    };
+  }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { titulo, descricao } = await getMetadataConfigs();
+  
+  return {
+    title: titulo,
+    description: descricao,
+  };
+}
 
 export default function RootLayout({
   children,

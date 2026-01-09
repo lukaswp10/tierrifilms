@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, GripVertical, Upload, X } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown, Upload, X } from 'lucide-react';
 import Image from 'next/image';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 
 interface Parceiro {
   id: string;
@@ -12,10 +13,12 @@ interface Parceiro {
 }
 
 export default function AdminParceiros() {
+  const { isMobile } = useMediaQuery();
   const [parceiros, setParceiros] = useState<Parceiro[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const [novoNome, setNovoNome] = useState('');
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
@@ -36,9 +39,15 @@ export default function AdminParceiros() {
     setLoading(false);
   };
 
+  const showMessage = (msg: string, type: 'success' | 'error') => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => setMessage(''), 3000);
+  };
+
   const handleAdd = async () => {
     if (!novoNome.trim()) {
-      setMessage('Digite o nome do parceiro');
+      showMessage('Digite o nome do parceiro', 'error');
       return;
     }
 
@@ -57,16 +66,15 @@ export default function AdminParceiros() {
         const novoParceiro = await res.json();
         setParceiros([...parceiros, novoParceiro]);
         setNovoNome('');
-        setMessage('Parceiro adicionado!');
+        showMessage('Parceiro adicionado!', 'success');
       } else {
-        setMessage('Erro ao adicionar parceiro');
+        showMessage('Erro ao adicionar', 'error');
       }
     } catch (error) {
       console.error('Erro ao adicionar:', error);
-      setMessage('Erro ao adicionar parceiro');
+      showMessage('Erro ao adicionar', 'error');
     }
     setSaving(false);
-    setTimeout(() => setMessage(''), 3000);
   };
 
   const handleUpdate = async (id: string, updates: Partial<Parceiro>) => {
@@ -97,8 +105,7 @@ export default function AdminParceiros() {
 
       if (res.ok) {
         setParceiros(parceiros.filter(p => p.id !== id));
-        setMessage('Parceiro removido');
-        setTimeout(() => setMessage(''), 3000);
+        showMessage('Parceiro removido', 'success');
       }
     } catch (error) {
       console.error('Erro ao deletar:', error);
@@ -107,12 +114,12 @@ export default function AdminParceiros() {
 
   const handleLogoUpload = async (parceiroId: string, file: File) => {
     if (!file.type.startsWith('image/')) {
-      setMessage('Selecione uma imagem');
+      showMessage('Selecione uma imagem', 'error');
       return;
     }
 
     if (file.size > 2 * 1024 * 1024) {
-      setMessage('Imagem muito grande (max 2MB)');
+      showMessage('Imagem muito grande (max 2MB)', 'error');
       return;
     }
 
@@ -129,12 +136,11 @@ export default function AdminParceiros() {
       const data = await res.json();
       if (data.url) {
         await handleUpdate(parceiroId, { logo_url: data.url });
-        setMessage('Logo enviado!');
-        setTimeout(() => setMessage(''), 3000);
+        showMessage('Logo enviado!', 'success');
       }
     } catch (error) {
       console.error('Erro no upload:', error);
-      setMessage('Erro ao enviar logo');
+      showMessage('Erro ao enviar logo', 'error');
     }
   };
 
@@ -160,44 +166,51 @@ export default function AdminParceiros() {
   };
 
   if (loading) {
-    return <div className="text-center text-gray-400 py-8">Carregando...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-400">Carregando...</div>
+      </div>
+    );
   }
+
+  // Estilos
+  const inputClass = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-white transition-all";
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-semibold">Parceiros / Clientes</h2>
-          <p className="text-gray-400 text-sm mt-1">
-            Gerencie os parceiros exibidos no site
-          </p>
+          <h2 className="text-xl font-semibold">Parceiros</h2>
+          <p className="text-gray-400 text-sm mt-1">Clientes e parceiros exibidos no site</p>
         </div>
       </div>
 
       {message && (
-        <div className={`mb-6 p-3 rounded-lg text-sm ${
-          message.includes('Erro') || message.includes('muito') 
-            ? 'bg-red-500/20 text-red-400' 
-            : 'bg-green-500/20 text-green-400'
+        <div className={`mb-6 p-4 rounded-xl text-sm ${
+          messageType === 'success' 
+            ? 'bg-green-500/20 text-green-400' 
+            : 'bg-red-500/20 text-red-400'
         }`}>
           {message}
         </div>
       )}
 
       {/* Adicionar novo */}
-      <div className="flex gap-3 mb-6">
+      <div className={`flex gap-3 mb-6 ${isMobile ? 'flex-col' : ''}`}>
         <input
           type="text"
           value={novoNome}
           onChange={(e) => setNovoNome(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder="Nome do parceiro"
-          className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gray-500"
+          className={`${inputClass} ${isMobile ? '' : 'flex-1'}`}
         />
         <button
           onClick={handleAdd}
           disabled={saving || !novoNome.trim()}
-          className="px-4 py-2 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+          className={`px-6 py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
+            isMobile ? 'w-full' : ''
+          }`}
         >
           <Plus className="w-4 h-4" />
           Adicionar
@@ -207,35 +220,35 @@ export default function AdminParceiros() {
       {/* Lista de parceiros */}
       <div className="space-y-3">
         {parceiros.length === 0 ? (
-          <div className="text-center text-gray-500 py-8 border border-dashed border-gray-700 rounded-lg">
-            Nenhum parceiro cadastrado
+          <div className="text-center py-12 bg-gray-800/30 rounded-2xl border-2 border-dashed border-gray-700">
+            <p className="text-gray-500">Nenhum parceiro cadastrado</p>
           </div>
         ) : (
           parceiros.map((parceiro, index) => (
             <div
               key={parceiro.id}
-              className="flex items-center gap-4 p-4 bg-gray-800/50 border border-gray-700 rounded-lg"
+              className="flex items-center gap-3 p-4 bg-gray-800/50 border border-gray-700 rounded-xl"
             >
               {/* Reordenar */}
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-0.5">
                 <button
                   onClick={() => moveItem(index, 'up')}
                   disabled={index === 0}
-                  className="p-1 text-gray-500 hover:text-white disabled:opacity-30"
+                  className="p-1.5 text-gray-500 hover:text-white disabled:opacity-30 transition-colors"
                 >
-                  <GripVertical className="w-4 h-4 rotate-180" />
+                  <ChevronUp className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => moveItem(index, 'down')}
                   disabled={index === parceiros.length - 1}
-                  className="p-1 text-gray-500 hover:text-white disabled:opacity-30"
+                  className="p-1.5 text-gray-500 hover:text-white disabled:opacity-30 transition-colors"
                 >
-                  <GripVertical className="w-4 h-4" />
+                  <ChevronDown className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Logo */}
-              <div className="relative w-20 h-12 bg-gray-700 rounded flex items-center justify-center overflow-hidden group">
+              <div className="relative w-16 h-12 bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden group flex-shrink-0">
                 {parceiro.logo_url ? (
                   <>
                     <Image
@@ -243,7 +256,7 @@ export default function AdminParceiros() {
                       alt={parceiro.nome}
                       fill
                       className="object-contain p-1"
-                      sizes="80px"
+                      sizes="64px"
                     />
                     <button
                       onClick={() => handleRemoveLogo(parceiro.id)}
@@ -255,7 +268,7 @@ export default function AdminParceiros() {
                 ) : (
                   <button
                     onClick={() => fileInputRefs.current[parceiro.id]?.click()}
-                    className="text-gray-500 hover:text-white transition-colors"
+                    className="text-gray-500 hover:text-white transition-colors p-2"
                   >
                     <Upload className="w-5 h-5" />
                   </button>
@@ -284,13 +297,13 @@ export default function AdminParceiros() {
                   ));
                 }}
                 onBlur={(e) => handleUpdate(parceiro.id, { nome: e.target.value })}
-                className="flex-1 px-3 py-2 bg-transparent border border-transparent hover:border-gray-600 focus:border-gray-500 rounded text-white focus:outline-none"
+                className="flex-1 px-3 py-2 bg-transparent border border-transparent hover:border-gray-600 focus:border-gray-500 rounded-lg text-white focus:outline-none min-w-0"
               />
 
               {/* Deletar */}
               <button
                 onClick={() => handleDelete(parceiro.id)}
-                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                className="p-2 text-gray-500 hover:text-red-400 transition-colors flex-shrink-0"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -300,8 +313,8 @@ export default function AdminParceiros() {
       </div>
 
       {/* Dica */}
-      <p className="text-gray-500 text-xs mt-4">
-        Dica: Clique no icone de upload para adicionar um logo. Se nao houver logo, o nome sera exibido.
+      <p className="text-gray-500 text-xs mt-6">
+        Clique no icone de upload para adicionar um logo. Se nao houver logo, o nome sera exibido.
       </p>
     </div>
   );

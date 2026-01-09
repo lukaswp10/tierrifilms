@@ -66,6 +66,14 @@ body {
   text-stroke: 1.5px var(--white);
 }
 
+/* Stroke mais fino em mobile para melhor legibilidade */
+@media (max-width: 640px) {
+  .text-outline {
+    -webkit-text-stroke: 1px var(--white);
+    text-stroke: 1px var(--white);
+  }
+}
+
 .text-outline-thin {
   color: transparent;
   -webkit-text-stroke: 0.5px var(--white);
@@ -248,4 +256,59 @@ body {
   .masonry-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* =============================================
+   ADMIN PANEL - Mobile Styles
+   ============================================= */
+
+/* Animacao slide up para menus */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}
+
+/* Safe area para dispositivos com notch */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+/* Touch-friendly inputs (min 44px) */
+.touch-input {
+  min-height: 44px;
+}
+
+/* Admin mobile container */
+@media (max-width: 768px) {
+  .admin-content {
+    padding-bottom: 5rem; /* Espaco para bottom nav */
+  }
+  
+  .admin-card {
+    border-radius: 1rem;
+  }
+}
+
+/* Scrollbar escondida em mobile para menus */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
