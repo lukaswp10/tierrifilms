@@ -1,8 +1,13 @@
 'use client';
 
+import { useConfigs } from '@/lib/useConfigs';
+
 export default function Marquee() {
-  const text = "PRODUCAO AUDIOVISUAL PARA CASAMENTOS E EVENTOS";
-  const text2 = "O OLHAR CINEMATOGRAFICO QUE ETERNIZA SEUS MELHORES MOMENTOS";
+  const { configs } = useConfigs();
+  
+  // Textos editaveis pelo admin
+  const text = configs['marquee_texto1'] || "PRODUCAO AUDIOVISUAL PARA CASAMENTOS E EVENTOS";
+  const text2 = configs['marquee_texto2'] || "O OLHAR CINEMATOGRAFICO QUE ETERNIZA SEUS MELHORES MOMENTOS";
   
   return (
     <section className="w-full py-6 bg-black border-y border-gray-800/50 overflow-hidden">

@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Home, Images, Users, Settings, BarChart3 } from 'lucide-react';
+import { Home, Images, Users, Settings, BarChart3, Building2 } from 'lucide-react';
 import { LogoText } from '@/components/Logo';
 import { SessionUser } from '@/lib/auth';
 import AdminHome from './AdminHome';
 import AdminGalerias from './AdminGalerias';
 import AdminEquipe from './AdminEquipe';
+import AdminParceiros from './AdminParceiros';
 import AdminUsuarios from './AdminUsuarios';
 import AdminUsage from './AdminUsage';
 
@@ -15,7 +16,7 @@ interface AdminDashboardProps {
   user: SessionUser;
 }
 
-type Tab = 'home' | 'galerias' | 'equipe' | 'usuarios' | 'recursos';
+type Tab = 'home' | 'galerias' | 'equipe' | 'parceiros' | 'usuarios' | 'recursos';
 
 export default function AdminDashboard({ user }: AdminDashboardProps) {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     { id: 'home' as Tab, label: 'Pagina Inicial', icon: <Home className="w-4 h-4" /> },
     { id: 'galerias' as Tab, label: 'Galerias', icon: <Images className="w-4 h-4" /> },
     { id: 'equipe' as Tab, label: 'Equipe', icon: <Users className="w-4 h-4" /> },
+    { id: 'parceiros' as Tab, label: 'Parceiros', icon: <Building2 className="w-4 h-4" /> },
     { id: 'recursos' as Tab, label: 'Recursos', icon: <BarChart3 className="w-4 h-4" /> },
     ...(user.role === 'admin' ? [{ id: 'usuarios' as Tab, label: 'Usuarios', icon: <Settings className="w-4 h-4" /> }] : []),
   ];
@@ -87,6 +89,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           {activeTab === 'home' && <AdminHome />}
           {activeTab === 'galerias' && <AdminGalerias />}
           {activeTab === 'equipe' && <AdminEquipe />}
+          {activeTab === 'parceiros' && <AdminParceiros />}
           {activeTab === 'recursos' && <AdminUsage />}
           {activeTab === 'usuarios' && user.role === 'admin' && <AdminUsuarios />}
         </div>

@@ -4,27 +4,55 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { LogoText } from './Logo';
+import { useConfigs } from '@/lib/useConfigs';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { configs } = useConfigs();
 
+  // Links editaveis pelo admin
   const navLinks = [
-    { label: "INICIO", href: "#" },
-    { label: "SOBRE", href: "#sobre" },
-    { label: "CASES", href: "#portfolio" },
-    { label: "SERVICOS", href: "#servicos" },
-    { label: "CONTATO", href: "#contato" },
-  ];
+    { 
+      label: configs['nav_link1_label'] || "INICIO", 
+      href: configs['nav_link1_href'] || "#" 
+    },
+    { 
+      label: configs['nav_link2_label'] || "SOBRE", 
+      href: configs['nav_link2_href'] || "#sobre" 
+    },
+    { 
+      label: configs['nav_link3_label'] || "CASES", 
+      href: configs['nav_link3_href'] || "#portfolio" 
+    },
+    { 
+      label: configs['nav_link4_label'] || "SERVICOS", 
+      href: configs['nav_link4_href'] || "#servicos" 
+    },
+    { 
+      label: configs['nav_link5_label'] || "CONTATO", 
+      href: configs['nav_link5_href'] || "#contato" 
+    },
+  ].filter(link => link.label); // Remove links vazios
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     setIsOpen(false);
     
+    // Se for link externo, abrir em nova aba
+    if (href.startsWith('http')) {
+      window.open(href, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    
+    // Se for ancora ou #, navegar suavemente
     if (href === "#") {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
+    } else if (href.startsWith('#')) {
       const element = document.querySelector(href);
       element?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // Link interno para outra pagina
+      window.location.href = href;
     }
   };
 

@@ -51,6 +51,13 @@ export interface Equipe {
   ordem: number;
 }
 
+export interface Parceiro {
+  id: string;
+  nome: string;
+  logo_url?: string;
+  ordem: number;
+}
+
 // Funcoes de busca - Configuracoes
 export async function getConfiguracao(chave: string): Promise<string | null> {
   const { data, error } = await supabase

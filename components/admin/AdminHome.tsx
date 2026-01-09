@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Upload } from 'lucide-react';
 
-type Section = 'cores' | 'logo' | 'hero' | 'about' | 'servicos' | 'numeros' | 'contato' | 'rodape';
+type Section = 'cores' | 'logo' | 'hero' | 'about' | 'showreel' | 'marquee' | 'navbar' | 'servicos' | 'numeros' | 'contato' | 'rodape';
 
 export default function AdminHome() {
   const [configs, setConfigs] = useState<Record<string, string>>({});
@@ -14,22 +13,21 @@ export default function AdminHome() {
   const [message, setMessage] = useState('');
   const [activeSection, setActiveSection] = useState<Section>('cores');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const showreelImageRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadConfigs();
   }, []);
 
   const loadConfigs = async () => {
-    const { data } = await supabase
-      .from('configuracoes')
-      .select('chave, valor');
-    
-    if (data) {
-      const configMap = data.reduce((acc, item) => {
-        acc[item.chave] = item.valor || '';
-        return acc;
-      }, {} as Record<string, string>);
-      setConfigs(configMap);
+    try {
+      const res = await fetch('/api/admin/configs');
+      if (res.ok) {
+        const data = await res.json();
+        setConfigs(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configs:', error);
     }
     setLoading(false);
   };
@@ -43,14 +41,19 @@ export default function AdminHome() {
     setMessage('');
 
     try {
-      for (const [chave, valor] of Object.entries(configs)) {
-        await supabase
-          .from('configuracoes')
-          .update({ valor })
-          .eq('chave', chave);
+      const res = await fetch('/api/admin/configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configs)
+      });
+
+      if (res.ok) {
+        setMessage('Configuracoes salvas com sucesso!');
+      } else {
+        setMessage('Erro ao salvar configuracoes');
       }
-      setMessage('Configuracoes salvas com sucesso!');
     } catch (error) {
+      console.error('Erro ao salvar:', error);
       setMessage('Erro ao salvar configuracoes');
     }
 
@@ -58,19 +61,21 @@ export default function AdminHome() {
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    folder: string,
+    configKey: string
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validar tipo
     if (!file.type.startsWith('image/')) {
       setMessage('Selecione uma imagem (PNG, JPG, SVG)');
       return;
     }
 
-    // Validar tamanho (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setMessage('Imagem muito grande. Maximo 2MB');
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage('Imagem muito grande. Maximo 5MB');
       return;
     }
 
@@ -80,7 +85,7 @@ export default function AdminHome() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('folder', 'logo');
+      formData.append('folder', folder);
 
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
@@ -90,9 +95,8 @@ export default function AdminHome() {
       const data = await res.json();
 
       if (data.url) {
-        handleChange('logo_imagem_url', data.url);
-        handleChange('logo_tipo', 'imagem');
-        setMessage('Logo enviado! Clique em Salvar para aplicar.');
+        handleChange(configKey, data.url);
+        setMessage('Imagem enviada! Clique em Salvar para aplicar.');
       } else {
         setMessage(data.error || 'Erro ao enviar imagem');
       }
@@ -101,7 +105,7 @@ export default function AdminHome() {
     }
 
     setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    e.target.value = '';
   };
 
   if (loading) {
@@ -111,8 +115,11 @@ export default function AdminHome() {
   const sections = [
     { id: 'cores' as Section, label: 'Cores' },
     { id: 'logo' as Section, label: 'Logo' },
+    { id: 'navbar' as Section, label: 'Menu' },
     { id: 'hero' as Section, label: 'Hero' },
     { id: 'about' as Section, label: 'Sobre' },
+    { id: 'showreel' as Section, label: 'Showreel' },
+    { id: 'marquee' as Section, label: 'Marquee' },
     { id: 'servicos' as Section, label: 'Diferenciais' },
     { id: 'numeros' as Section, label: 'Numeros' },
     { id: 'contato' as Section, label: 'Contato' },
@@ -147,7 +154,7 @@ export default function AdminHome() {
 
       {message && (
         <div className={`mb-6 p-3 rounded-lg text-sm ${
-          message.includes('sucesso') || message.includes('enviado') 
+          message.includes('sucesso') || message.includes('enviada') 
             ? 'bg-green-500/20 text-green-400' 
             : 'bg-red-500/20 text-red-400'
         }`}>
@@ -175,7 +182,6 @@ export default function AdminHome() {
       {/* CORES */}
       {activeSection === 'cores' && (
         <div className="space-y-6">
-          {/* Tema Base */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-medium">Tema Base</h4>
@@ -184,132 +190,59 @@ export default function AdminHome() {
               </button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Fundo</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={configs['cor_fundo'] || '#000000'}
-                    onChange={(e) => handleChange('cor_fundo', e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={configs['cor_fundo'] || '#000000'}
-                    onChange={(e) => handleChange('cor_fundo', e.target.value)}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
-                  />
+              {[
+                { key: 'cor_fundo', label: 'Fundo', default: '#000000' },
+                { key: 'cor_texto', label: 'Texto', default: '#FFFFFF' },
+                { key: 'cor_destaque', label: 'Destaque', default: '#FFFFFF' },
+                { key: 'cor_texto_secundario', label: 'Secundario', default: '#888888' },
+              ].map(({ key, label, default: def }) => (
+                <div key={key}>
+                  <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={configs[key] || def}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={configs[key] || def}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Texto</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={configs['cor_texto'] || '#FFFFFF'}
-                    onChange={(e) => handleChange('cor_texto', e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={configs['cor_texto'] || '#FFFFFF'}
-                    onChange={(e) => handleChange('cor_texto', e.target.value)}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Destaque</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={configs['cor_destaque'] || '#FFFFFF'}
-                    onChange={(e) => handleChange('cor_destaque', e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={configs['cor_destaque'] || '#FFFFFF'}
-                    onChange={(e) => handleChange('cor_destaque', e.target.value)}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Secundario</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={configs['cor_texto_secundario'] || '#888888'}
-                    onChange={(e) => handleChange('cor_texto_secundario', e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={configs['cor_texto_secundario'] || '#888888'}
-                    onChange={(e) => handleChange('cor_texto_secundario', e.target.value)}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
-                  />
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Detalhes */}
           <div>
             <h4 className="text-sm font-medium mb-3">Detalhes</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Bordas</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={configs['cor_borda'] || '#333333'}
-                    onChange={(e) => handleChange('cor_borda', e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={configs['cor_borda'] || '#333333'}
-                    onChange={(e) => handleChange('cor_borda', e.target.value)}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
-                  />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[
+                { key: 'cor_borda', label: 'Bordas', default: '#333333' },
+                { key: 'cor_fundo_alt', label: 'Fundo Alt', default: '#FFFFFF' },
+                { key: 'cor_texto_alt', label: 'Texto Alt', default: '#000000' },
+              ].map(({ key, label, default: def }) => (
+                <div key={key}>
+                  <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={configs[key] || def}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={configs[key] || def}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Fundo Alt</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={configs['cor_fundo_alt'] || '#FFFFFF'}
-                    onChange={(e) => handleChange('cor_fundo_alt', e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={configs['cor_fundo_alt'] || '#FFFFFF'}
-                    onChange={(e) => handleChange('cor_fundo_alt', e.target.value)}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Texto Alt</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={configs['cor_texto_alt'] || '#000000'}
-                    onChange={(e) => handleChange('cor_texto_alt', e.target.value)}
-                    className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={configs['cor_texto_alt'] || '#000000'}
-                    onChange={(e) => handleChange('cor_texto_alt', e.target.value)}
-                    className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs font-mono"
-                  />
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -323,38 +256,18 @@ export default function AdminHome() {
                 borderColor: configs['cor_borda'] || '#333333'
               }}
             >
-              <h3 
-                className="text-2xl font-light mb-2"
-                style={{ color: configs['cor_texto'] || '#FFFFFF' }}
-              >
+              <h3 style={{ color: configs['cor_texto'] || '#FFFFFF' }} className="text-2xl font-light mb-2">
                 TITULO EXEMPLO
               </h3>
-              <p 
-                className="text-sm mb-4"
-                style={{ color: configs['cor_texto_secundario'] || '#888888' }}
-              >
+              <p style={{ color: configs['cor_texto_secundario'] || '#888888' }} className="text-sm mb-4">
                 Texto secundario de exemplo
               </p>
               <button
                 className="px-4 py-2 text-sm border"
-                style={{ 
-                  borderColor: configs['cor_destaque'] || '#FFFFFF',
-                  color: configs['cor_destaque'] || '#FFFFFF'
-                }}
+                style={{ borderColor: configs['cor_destaque'] || '#FFFFFF', color: configs['cor_destaque'] || '#FFFFFF' }}
               >
                 BOTAO
               </button>
-            </div>
-            <div 
-              className="p-4 rounded-lg mt-2"
-              style={{ backgroundColor: configs['cor_fundo_alt'] || '#FFFFFF' }}
-            >
-              <p 
-                className="text-sm"
-                style={{ color: configs['cor_texto_alt'] || '#000000' }}
-              >
-                Secao com fundo alternativo (ex: Clientes)
-              </p>
             </div>
           </div>
         </div>
@@ -363,7 +276,6 @@ export default function AdminHome() {
       {/* LOGO */}
       {activeSection === 'logo' && (
         <div className="space-y-4">
-          {/* Toggle Texto/Imagem */}
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-400">Tipo:</span>
             <div className="flex bg-gray-800 rounded-lg p-1">
@@ -386,9 +298,7 @@ export default function AdminHome() {
             </div>
           </div>
 
-          {/* Conteudo */}
           <div className="flex items-start gap-6">
-            {/* Input */}
             <div className="flex-1">
               {configs['logo_tipo'] !== 'imagem' ? (
                 <div>
@@ -410,7 +320,7 @@ export default function AdminHome() {
                     className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white text-sm"
                     placeholder="URL da imagem ou clique em upload"
                   />
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'logo', 'logo_imagem_url')} className="hidden" />
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
@@ -422,7 +332,6 @@ export default function AdminHome() {
               )}
             </div>
 
-            {/* Preview */}
             <div className="bg-black px-4 py-3 rounded-lg flex items-center justify-center">
               {configs['logo_tipo'] === 'imagem' && configs['logo_imagem_url']?.startsWith('http') ? (
                 <img src={configs['logo_imagem_url']} alt="Logo" className="h-6 w-auto object-contain" />
@@ -437,6 +346,37 @@ export default function AdminHome() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* NAVBAR / MENU */}
+      {activeSection === 'navbar' && (
+        <div className="space-y-6">
+          <p className="text-sm text-gray-500 mb-4">Configure os links do menu de navegacao (ate 5 links)</p>
+          
+          {[1, 2, 3, 4, 5].map((num) => (
+            <div key={num} className="flex gap-3 items-center">
+              <span className="text-gray-500 text-sm w-6">{num}.</span>
+              <input
+                type="text"
+                value={configs[`nav_link${num}_label`] || ''}
+                onChange={(e) => handleChange(`nav_link${num}_label`, e.target.value)}
+                className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white text-sm"
+                placeholder="Texto do link (ex: INICIO)"
+              />
+              <input
+                type="text"
+                value={configs[`nav_link${num}_href`] || ''}
+                onChange={(e) => handleChange(`nav_link${num}_href`, e.target.value)}
+                className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white text-sm"
+                placeholder="Destino (ex: #sobre ou /galeria)"
+              />
+            </div>
+          ))}
+          
+          <p className="text-xs text-gray-500 mt-4">
+            Dica: Use # para links internos (ex: #sobre, #contato) ou URLs completas para links externos
+          </p>
         </div>
       )}
 
@@ -531,6 +471,117 @@ export default function AdminHome() {
               onChange={(e) => handleChange('about_paragrafo2', e.target.value)}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
               rows={4}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* SHOWREEL */}
+      {activeSection === 'showreel' && (
+        <div className="space-y-6">
+          <p className="text-sm text-gray-500 mb-4">Configuracoes da secao Showreel</p>
+          
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Titulo</label>
+              <input
+                type="text"
+                value={configs['showreel_titulo'] || ''}
+                onChange={(e) => handleChange('showreel_titulo', e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
+                placeholder="SHOWREEL"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Subtitulo</label>
+              <input
+                type="text"
+                value={configs['showreel_subtitulo'] || ''}
+                onChange={(e) => handleChange('showreel_subtitulo', e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
+                placeholder="TIERRIFILMS"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Texto</label>
+              <input
+                type="text"
+                value={configs['showreel_texto'] || ''}
+                onChange={(e) => handleChange('showreel_texto', e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
+                placeholder="Eternize o Real,"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-2">Local</label>
+              <input
+                type="text"
+                value={configs['showreel_local'] || ''}
+                onChange={(e) => handleChange('showreel_local', e.target.value)}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
+                placeholder="SP (BR)"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-800">
+            <label className="block text-sm text-gray-400 mb-2">Imagem de Fundo</label>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={configs['showreel_imagem'] || ''}
+                onChange={(e) => handleChange('showreel_imagem', e.target.value)}
+                className="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white text-sm"
+                placeholder="URL da imagem"
+              />
+              <input ref={showreelImageRef} type="file" accept="image/*" onChange={(e) => handleImageUpload(e, 'showreel', 'showreel_imagem')} className="hidden" />
+              <button
+                onClick={() => showreelImageRef.current?.click()}
+                disabled={uploading}
+                className="px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <Upload className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">URL do Video (YouTube, Vimeo ou MP4)</label>
+            <input
+              type="text"
+              value={configs['showreel_video_url'] || ''}
+              onChange={(e) => handleChange('showreel_video_url', e.target.value)}
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
+              placeholder="https://youtube.com/watch?v=... ou https://vimeo.com/..."
+            />
+            <p className="text-xs text-gray-500 mt-2">Deixe vazio para desabilitar o botao de play</p>
+          </div>
+        </div>
+      )}
+
+      {/* MARQUEE */}
+      {activeSection === 'marquee' && (
+        <div className="space-y-6">
+          <p className="text-sm text-gray-500 mb-4">Textos do banner que passa na tela</p>
+          
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Texto 1</label>
+            <input
+              type="text"
+              value={configs['marquee_texto1'] || ''}
+              onChange={(e) => handleChange('marquee_texto1', e.target.value)}
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
+              placeholder="PRODUCAO AUDIOVISUAL PARA CASAMENTOS E EVENTOS"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-2">Texto 2</label>
+            <input
+              type="text"
+              value={configs['marquee_texto2'] || ''}
+              onChange={(e) => handleChange('marquee_texto2', e.target.value)}
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-white"
+              placeholder="O OLHAR CINEMATOGRAFICO QUE ETERNIZA SEUS MELHORES MOMENTOS"
             />
           </div>
         </div>
@@ -679,7 +730,7 @@ export default function AdminHome() {
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Instagram (link completo)</label>
+              <label className="block text-sm text-gray-400 mb-2">Instagram</label>
               <input
                 type="text"
                 value={configs['instagram'] || ''}
@@ -689,7 +740,7 @@ export default function AdminHome() {
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">YouTube (link completo)</label>
+              <label className="block text-sm text-gray-400 mb-2">YouTube</label>
               <input
                 type="text"
                 value={configs['youtube'] || ''}
@@ -699,7 +750,7 @@ export default function AdminHome() {
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2">Facebook (link completo)</label>
+              <label className="block text-sm text-gray-400 mb-2">Facebook</label>
               <input
                 type="text"
                 value={configs['facebook'] || ''}

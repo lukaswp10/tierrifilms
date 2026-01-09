@@ -1,7 +1,27 @@
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
-const SECRET_KEY = process.env.SESSION_SECRET || 'tierrifilms-secret-key-2024';
+// SEGURANCA: Nao usar fallback - SESSION_SECRET deve ser configurado
+const SECRET_KEY = process.env.SESSION_SECRET;
+
+// Verificar se SECRET_KEY esta configurado na inicializacao
+if (!SECRET_KEY && process.env.NODE_ENV === 'production') {
+  console.error('ERRO CRITICO: SESSION_SECRET nao esta configurado!');
+  console.error('Configure a variavel de ambiente SESSION_SECRET para habilitar autenticacao.');
+}
+
+// Fallback apenas para desenvolvimento local
+function getSecretKey(): string {
+  if (SECRET_KEY) return SECRET_KEY;
+  
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('SESSION_SECRET nao configurado em producao!');
+  }
+  
+  // Apenas para desenvolvimento - mostra aviso
+  console.warn('DEV: Usando chave de sessao temporaria. Configure SESSION_SECRET.');
+  return 'dev-only-secret-key-not-for-production';
+}
 
 export interface SessionUser {
   id: string;
@@ -11,7 +31,7 @@ export interface SessionUser {
 }
 
 function signToken(data: string): string {
-  const hmac = crypto.createHmac('sha256', SECRET_KEY);
+  const hmac = crypto.createHmac('sha256', getSecretKey());
   hmac.update(data);
   return hmac.digest('hex');
 }
@@ -34,7 +54,8 @@ export function createSessionToken(user: SessionUser): string {
     email: user.email,
     nome: user.nome,
     role: user.role,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 dias
+    iat: Date.now(), // Issued at
   });
 
   const encodedPayload = Buffer.from(payload).toString('base64');

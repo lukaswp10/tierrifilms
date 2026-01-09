@@ -1,10 +1,32 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { createSessionToken } from '@/lib/auth';
+import { checkRateLimit, resetRateLimit, getClientIP } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
+  // Extrair IP para rate limiting
+  const clientIP = getClientIP(request);
+  
+  // Verificar rate limit
+  const rateLimit = checkRateLimit(clientIP);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { 
+        error: `Muitas tentativas. Tente novamente em ${rateLimit.retryAfter} segundos.`,
+        retryAfter: rateLimit.retryAfter 
+      },
+      { 
+        status: 429,
+        headers: {
+          'Retry-After': String(rateLimit.retryAfter),
+          'X-RateLimit-Remaining': '0'
+        }
+      }
+    );
+  }
+
   try {
     const { email, senha } = await request.json();
 
@@ -15,17 +37,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Buscar usuario no banco
-    const { data: usuario, error } = await supabase
+    // Validar formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Email invalido' },
+        { status: 400 }
+      );
+    }
+
+    // Buscar usuario no banco (usando supabaseAdmin por causa do RLS)
+    const { data: usuario, error } = await supabaseAdmin
       .from('usuarios')
       .select('*')
-      .eq('email', email.toLowerCase())
+      .eq('email', email.toLowerCase().trim())
       .single();
 
     if (error || !usuario) {
+      // Nao revelar se o email existe ou nao
       return NextResponse.json(
         { error: 'Email ou senha incorretos' },
-        { status: 401 }
+        { 
+          status: 401,
+          headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) }
+        }
       );
     }
 
@@ -35,9 +70,15 @@ export async function POST(request: Request) {
     if (!senhaCorreta) {
       return NextResponse.json(
         { error: 'Email ou senha incorretos' },
-        { status: 401 }
+        { 
+          status: 401,
+          headers: { 'X-RateLimit-Remaining': String(rateLimit.remaining) }
+        }
       );
     }
+
+    // Login bem sucedido - resetar rate limit
+    resetRateLimit(clientIP);
 
     // Criar token assinado
     const sessionToken = createSessionToken({
