@@ -27,7 +27,7 @@ export default function Crew() {
 
   if (loading) {
     return (
-      <section className="w-full py-12 md:py-20 bg-black" ref={ref}>
+      <section id="equipe" className="w-full py-12 md:py-20 bg-black" ref={ref}>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -43,7 +43,7 @@ export default function Crew() {
 
   if (equipe.length === 0) {
     return (
-      <section className="w-full py-12 md:py-20 bg-black" ref={ref}>
+      <section id="equipe" className="w-full py-12 md:py-20 bg-black" ref={ref}>
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -60,7 +60,7 @@ export default function Crew() {
   }
 
   return (
-    <section className="w-full py-12 md:py-20 bg-black" ref={ref}>
+    <section id="equipe" className="w-full py-12 md:py-20 bg-black" ref={ref}>
       {/* Titulo CREW em outline */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}

@@ -489,7 +489,7 @@ export default function AdminHome() {
             {[
               { num: 1, sugestao: 'INICIO', destino: '#', dica: 'Volta ao topo da pagina' },
               { num: 2, sugestao: 'SOBRE', destino: '#sobre', dica: 'Ancora para secao Sobre' },
-              { num: 3, sugestao: 'CASES', destino: '#portfolio', dica: 'Ancora para Portfolio' },
+              { num: 3, sugestao: 'CASES', destino: '#cases', dica: 'Ancora para secao Cases' },
               { num: 4, sugestao: 'EQUIPE', destino: '#equipe', dica: 'Ancora para Equipe' },
               { num: 5, sugestao: 'CONTATO', destino: '#contato', dica: 'Ancora para Contato' },
             ].map(({ num, sugestao, destino, dica }) => (
