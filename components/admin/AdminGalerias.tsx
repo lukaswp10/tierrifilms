@@ -6,11 +6,12 @@ import { CldUploadWidget } from 'next-cloudinary';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { 
   ChevronLeft, ChevronDown, Plus, Image, Trash2, Edit2, X, Star, 
-  Video, Play, Settings, FolderPlus, ImagePlus, Film
+  Video, Play, Settings, FolderPlus, ImagePlus, Film, Link2, Upload
 } from 'lucide-react';
 
 type MobileView = 'list' | 'details';
 type MidiaTab = 'todas' | 'fotos' | 'videos';
+type CapaVideoTab = 'link' | 'upload';
 
 // ==================== INTERFACES ====================
 
@@ -45,6 +46,7 @@ interface GaleriaDetailsProps {
   onUpdateCapa: (url: string, tipo: 'imagem' | 'video') => void;
   onUploadComplete: (result: { info?: { secure_url?: string } }) => void;
   onOpenVideoModal: () => void;
+  onOpenCapaVideoModal: () => void;
   onMidiaTabChange: (tab: MidiaTab) => void;
   onDeleteMidia: (id: string) => void;
   isYouTubeUrl: (url: string) => boolean;
@@ -202,6 +204,7 @@ function GaleriaDetails({
   onUpdateCapa,
   onUploadComplete,
   onOpenVideoModal,
+  onOpenCapaVideoModal,
   onMidiaTabChange,
   onDeleteMidia,
   isYouTubeUrl,
@@ -293,17 +296,7 @@ function GaleriaDetails({
                   )}
                 </CldUploadWidget>
                 <button
-                  onClick={() => {
-                    const url = prompt('Cole a URL do video do YouTube:');
-                    if (url) {
-                      const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
-                      if (youtubeMatch) {
-                        onUpdateCapa(`https://www.youtube.com/embed/${youtubeMatch[1]}`, 'video');
-                      } else {
-                        alert('URL do YouTube invalida');
-                      }
-                    }
-                  }}
+                  onClick={onOpenCapaVideoModal}
                   className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
                 >
                   <Film className="w-4 h-4" />
@@ -440,12 +433,15 @@ export default function AdminGalerias() {
   const [showModal, setShowModal] = useState(false);
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [showCapaVideoModal, setShowCapaVideoModal] = useState(false);
   const [editingGaleria, setEditingGaleria] = useState<Partial<Galeria> | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('list');
   const [filtroCategoria, setFiltroCategoria] = useState<string>('todas');
   const [midiaTab, setMidiaTab] = useState<MidiaTab>('todas');
   const [novaCategoria, setNovaCategoria] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
+  const [capaVideoUrl, setCapaVideoUrl] = useState('');
+  const [capaVideoTab, setCapaVideoTab] = useState<CapaVideoTab>('link');
 
   const selectedGaleriaRef = useRef<Galeria | null>(null);
   const midiasRef = useRef<GaleriaFoto[]>([]);
@@ -471,6 +467,11 @@ export default function AdminGalerias() {
     const match = url.match(/(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
     return match ? `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg` : null;
   }, []);
+
+  const parseYouTubeUrl = (url: string) => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
+    return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+  };
 
   // ==================== API CALLS ====================
 
@@ -681,6 +682,16 @@ export default function AdminGalerias() {
     }
   }, []);
 
+  const handleCapaVideoConfirm = () => {
+    const parsed = parseYouTubeUrl(capaVideoUrl);
+    if (parsed) {
+      handleUpdateCapa(parsed, 'video');
+      setShowCapaVideoModal(false);
+      setCapaVideoUrl('');
+      setCapaVideoTab('link');
+    }
+  };
+
   const handleAddCategoria = async () => {
     if (!novaCategoria.trim()) return;
 
@@ -792,6 +803,7 @@ export default function AdminGalerias() {
               onUpdateCapa={handleUpdateCapa}
               onUploadComplete={handleUploadComplete}
               onOpenVideoModal={() => setShowVideoModal(true)}
+              onOpenCapaVideoModal={() => setShowCapaVideoModal(true)}
               onMidiaTabChange={setMidiaTab}
               onDeleteMidia={handleDeleteMidia}
               isYouTubeUrl={isYouTubeUrl}
@@ -801,67 +813,70 @@ export default function AdminGalerias() {
         </div>
       ) : (
         <div className="flex min-h-[600px]">
-            <GaleriasList
-              isMobile={isMobile}
-              galerias={galerias}
-              categorias={categorias}
-              galeriasFiltradas={galeriasFiltradas}
-              selectedGaleria={selectedGaleria}
-              filtroCategoria={filtroCategoria}
-              principaisCount={principaisCount}
-              maxPrincipais={MAX_PRINCIPAIS}
-              selectClass={selectClass}
-              onSelectGaleria={handleSelectGaleria}
-              onDeleteGaleria={handleDeleteGaleria}
-              onNewGaleria={() => {
-                setEditingGaleria({ nome: '', categoria: '', descricao: '', capa_tipo: 'imagem' });
-                setShowModal(true);
-              }}
-              onOpenCategorias={() => setShowCategoriaModal(true)}
-              onFilterChange={setFiltroCategoria}
-              getYouTubeThumbnail={getYouTubeThumbnail}
-            />
-            <GaleriaDetails
-              isMobile={isMobile}
-              selectedGaleria={selectedGaleria}
-              midias={midias}
-              midiasFiltradas={midiasFiltradas}
-              midiaTab={midiaTab}
-              fotosCount={fotosCount}
-              videosCount={videosCount}
-              onBackToList={handleBackToList}
-              onEditGaleria={() => {
-                setEditingGaleria(selectedGaleria);
-                setShowModal(true);
-              }}
-              onUpdateCapa={handleUpdateCapa}
-              onUploadComplete={handleUploadComplete}
-              onOpenVideoModal={() => setShowVideoModal(true)}
-              onMidiaTabChange={setMidiaTab}
-              onDeleteMidia={handleDeleteMidia}
-              isYouTubeUrl={isYouTubeUrl}
-              getYouTubeThumbnail={getYouTubeThumbnail}
-            />
+          <GaleriasList
+            isMobile={isMobile}
+            galerias={galerias}
+            categorias={categorias}
+            galeriasFiltradas={galeriasFiltradas}
+            selectedGaleria={selectedGaleria}
+            filtroCategoria={filtroCategoria}
+            principaisCount={principaisCount}
+            maxPrincipais={MAX_PRINCIPAIS}
+            selectClass={selectClass}
+            onSelectGaleria={handleSelectGaleria}
+            onDeleteGaleria={handleDeleteGaleria}
+            onNewGaleria={() => {
+              setEditingGaleria({ nome: '', categoria: '', descricao: '', capa_tipo: 'imagem' });
+              setShowModal(true);
+            }}
+            onOpenCategorias={() => setShowCategoriaModal(true)}
+            onFilterChange={setFiltroCategoria}
+            getYouTubeThumbnail={getYouTubeThumbnail}
+          />
+          <GaleriaDetails
+            isMobile={isMobile}
+            selectedGaleria={selectedGaleria}
+            midias={midias}
+            midiasFiltradas={midiasFiltradas}
+            midiaTab={midiaTab}
+            fotosCount={fotosCount}
+            videosCount={videosCount}
+            onBackToList={handleBackToList}
+            onEditGaleria={() => {
+              setEditingGaleria(selectedGaleria);
+              setShowModal(true);
+            }}
+            onUpdateCapa={handleUpdateCapa}
+            onUploadComplete={handleUploadComplete}
+            onOpenVideoModal={() => setShowVideoModal(true)}
+            onOpenCapaVideoModal={() => setShowCapaVideoModal(true)}
+            onMidiaTabChange={setMidiaTab}
+            onDeleteMidia={handleDeleteMidia}
+            isYouTubeUrl={isYouTubeUrl}
+            getYouTubeThumbnail={getYouTubeThumbnail}
+          />
         </div>
       )}
 
-      {/* Modal Nova/Editar Galeria */}
+      {/* Modal Nova/Editar Galeria - CORRIGIDO */}
       {showModal && editingGaleria && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className={`bg-gray-900 rounded-2xl p-6 w-full ${isMobile ? 'max-h-[90vh] overflow-y-auto' : 'max-w-md'}`}>
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            {/* Header fixo */}
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold">
                 {editingGaleria.id ? 'Editar Galeria' : 'Nova Galeria'}
               </h3>
               <button
                 onClick={() => { setShowModal(false); setEditingGaleria(null); }}
-                className="p-2 text-gray-400 hover:text-white"
+                className="p-2 text-gray-400 hover:text-white -mr-2"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            {/* Conteudo com scroll */}
+            <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Nome</label>
                 <input
@@ -896,7 +911,7 @@ export default function AdminGalerias() {
                   value={editingGaleria.descricao || ''}
                   onChange={(e) => setEditingGaleria({ ...editingGaleria, descricao: e.target.value })}
                   className={inputClass}
-                  rows={3}
+                  rows={2}
                   placeholder="Breve descricao do projeto..."
                 />
               </div>
@@ -913,7 +928,7 @@ export default function AdminGalerias() {
               </div>
 
               {/* Toggle Home */}
-              <div className="pt-2">
+              <div>
                 <label className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl cursor-pointer">
                   <div className="flex items-center gap-3">
                     <Star className={`w-5 h-5 ${editingGaleria.is_principal ? 'text-amber-400 fill-amber-400' : 'text-gray-500'}`} />
@@ -947,7 +962,8 @@ export default function AdminGalerias() {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* Footer fixo */}
+            <div className="flex gap-3 p-6 pt-4 border-t border-gray-800">
               <button
                 onClick={() => { setShowModal(false); setEditingGaleria(null); }}
                 disabled={saving}
@@ -970,78 +986,82 @@ export default function AdminGalerias() {
       {/* Modal Categorias */}
       {showCategoriaModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className={`bg-gray-900 rounded-2xl p-6 w-full ${isMobile ? 'max-h-[90vh] overflow-y-auto' : 'max-w-md'}`}>
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold">Categorias</h3>
-              <button onClick={() => setShowCategoriaModal(false)} className="p-2 text-gray-400 hover:text-white">
+              <button onClick={() => setShowCategoriaModal(false)} className="p-2 text-gray-400 hover:text-white -mr-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex gap-2 mb-6">
-              <input
-                type="text"
-                value={novaCategoria}
-                onChange={(e) => setNovaCategoria(e.target.value)}
-                className={`${inputClass} flex-1`}
-                placeholder="Nova categoria..."
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCategoria()}
-              />
+            <div className="flex-1 overflow-y-auto p-6 pt-4">
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={novaCategoria}
+                  onChange={(e) => setNovaCategoria(e.target.value)}
+                  className={`${inputClass} flex-1`}
+                  placeholder="Nova categoria..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCategoria()}
+                />
+                <button
+                  onClick={handleAddCategoria}
+                  disabled={!novaCategoria.trim()}
+                  className="px-4 py-3 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  <FolderPlus className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {categorias.length === 0 ? (
+                  <p className="text-center text-gray-500 py-4">Nenhuma categoria</p>
+                ) : (
+                  categorias.map(cat => {
+                    const count = galerias.filter(g => g.categoria === cat.nome).length;
+                    return (
+                      <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl">
+                        <div>
+                          <p className="font-medium text-sm">{cat.nome}</p>
+                          <p className="text-xs text-gray-500">{count} galeria{count !== 1 && 's'}</p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteCategoria(cat.id)}
+                          className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 pt-4 border-t border-gray-800">
               <button
-                onClick={handleAddCategoria}
-                disabled={!novaCategoria.trim()}
-                className="px-4 py-3 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                onClick={() => setShowCategoriaModal(false)}
+                className="w-full py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
               >
-                <FolderPlus className="w-4 h-4" />
+                Fechar
               </button>
             </div>
-
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {categorias.length === 0 ? (
-                <p className="text-center text-gray-500 py-4">Nenhuma categoria</p>
-              ) : (
-                categorias.map(cat => {
-                  const count = galerias.filter(g => g.categoria === cat.nome).length;
-                  return (
-                    <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl">
-                      <div>
-                        <p className="font-medium text-sm">{cat.nome}</p>
-                        <p className="text-xs text-gray-500">{count} galeria{count !== 1 && 's'}</p>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteCategoria(cat.id)}
-                        className="p-2 text-gray-500 hover:text-red-400 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <button
-              onClick={() => setShowCategoriaModal(false)}
-              className="w-full mt-6 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
-            >
-              Fechar
-            </button>
           </div>
         </div>
       )}
 
-      {/* Modal Video */}
+      {/* Modal Video para Midias */}
       {showVideoModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className={`bg-gray-900 rounded-2xl p-6 w-full ${isMobile ? '' : 'max-w-md'}`}>
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800">
               <h3 className="text-lg font-semibold">Adicionar Video</h3>
-              <button onClick={() => { setShowVideoModal(false); setVideoUrl(''); }} className="p-2 text-gray-400 hover:text-white">
+              <button onClick={() => { setShowVideoModal(false); setVideoUrl(''); }} className="p-2 text-gray-400 hover:text-white -mr-2">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-2">URL do YouTube</label>
                 <input
@@ -1060,7 +1080,7 @@ export default function AdminGalerias() {
               )}
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 p-6 pt-4 border-t border-gray-800">
               <button
                 onClick={() => { setShowVideoModal(false); setVideoUrl(''); }}
                 className="flex-1 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
@@ -1074,6 +1094,125 @@ export default function AdminGalerias() {
               >
                 Adicionar
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Video para Capa - NOVO */}
+      {showCapaVideoModal && selectedGaleria && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800">
+              <h3 className="text-lg font-semibold">Video de Capa</h3>
+              <button 
+                onClick={() => { setShowCapaVideoModal(false); setCapaVideoUrl(''); setCapaVideoTab('link'); }} 
+                className="p-2 text-gray-400 hover:text-white -mr-2"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 pt-4 space-y-4">
+              {/* Tabs */}
+              <div className="flex gap-1 p-1 bg-gray-800/50 rounded-lg">
+                <button
+                  onClick={() => setCapaVideoTab('link')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    capaVideoTab === 'link' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Link2 className="w-4 h-4" />
+                  Link YouTube
+                </button>
+                <button
+                  onClick={() => setCapaVideoTab('upload')}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    capaVideoTab === 'upload' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Upload className="w-4 h-4" />
+                  Enviar
+                </button>
+              </div>
+
+              {capaVideoTab === 'link' ? (
+                <>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">URL do YouTube</label>
+                    <input
+                      type="text"
+                      value={capaVideoUrl}
+                      onChange={(e) => setCapaVideoUrl(e.target.value)}
+                      className={inputClass}
+                      placeholder="https://youtube.com/watch?v=..."
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Cole o link do video do YouTube
+                    </p>
+                  </div>
+
+                  {capaVideoUrl && isYouTubeUrl(capaVideoUrl) && (
+                    <div className="aspect-video bg-gray-800 rounded-xl overflow-hidden relative">
+                      <img src={getYouTubeThumbnail(capaVideoUrl) || ''} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                        <Play className="w-12 h-12 text-white fill-white/80" />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-400">
+                    Envie um video diretamente para usar como capa.
+                  </p>
+                  <CldUploadWidget
+                    uploadPreset="tierrifilms"
+                    options={{ 
+                      folder: 'tierrifilms/videos',
+                      resourceType: 'video',
+                      maxFileSize: 100000000, // 100MB
+                    }}
+                    onSuccess={(result) => {
+                      const r = result as { info?: { secure_url?: string } };
+                      if (r.info?.secure_url) {
+                        handleUpdateCapa(r.info.secure_url, 'video');
+                        setShowCapaVideoModal(false);
+                        setCapaVideoTab('link');
+                      }
+                    }}
+                  >
+                    {({ open }) => (
+                      <button 
+                        onClick={() => open()} 
+                        className="w-full py-8 border-2 border-dashed border-gray-700 rounded-xl text-gray-400 hover:border-gray-600 hover:text-gray-300 transition-colors"
+                      >
+                        <Upload className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm font-medium">Clique para enviar video</p>
+                        <p className="text-xs mt-1">MP4, MOV, WEBM (max 100MB)</p>
+                      </button>
+                    )}
+                  </CldUploadWidget>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 p-6 pt-4 border-t border-gray-800">
+              <button
+                onClick={() => { setShowCapaVideoModal(false); setCapaVideoUrl(''); setCapaVideoTab('link'); }}
+                className="flex-1 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              {capaVideoTab === 'link' && (
+                <button
+                  onClick={handleCapaVideoConfirm}
+                  disabled={!capaVideoUrl.trim() || !parseYouTubeUrl(capaVideoUrl)}
+                  className="flex-1 py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Confirmar
+                </button>
+              )}
             </div>
           </div>
         </div>
