@@ -475,89 +475,91 @@ export default function AdminClientes() {
   return (
     <div>
       {/* Header */}
-      <div className={`mb-6 ${isMobile ? 'space-y-4' : 'flex items-start justify-between'}`}>
-        <div>
-          <h2 className="text-xl font-semibold">CRM - Gestao de Leads</h2>
-          <p className="text-gray-400 text-sm mt-1">Pipeline de vendas e acompanhamento de clientes</p>
-        </div>
-        <div className={`flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''}`}>
-          {/* Toggle Lista/Kanban - tambem no mobile */}
-          <div className="flex bg-gray-800 rounded-xl p-1">
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">CRM - Gestao de Leads</h2>
+            <p className="text-gray-400 text-sm mt-1">Pipeline de vendas e acompanhamento de clientes</p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Toggle Lista/Kanban */}
+            <div className="flex bg-gray-800 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('lista')}
+                className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
+                  viewMode === 'lista' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <LayoutList className="w-4 h-4" />
+                {!isMobile && 'Lista'}
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
+                  viewMode === 'kanban' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Columns className="w-4 h-4" />
+                {!isMobile && 'Kanban'}
+              </button>
+            </div>
             <button
-              onClick={() => setViewMode('lista')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
-                viewMode === 'lista' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
-              }`}
+              onClick={() => setShowCriarLead(true)}
+              className="px-4 py-2 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm"
             >
-              <LayoutList className="w-4 h-4" />
-              {!isMobile && 'Lista'}
+              <Plus className="w-4 h-4" />
+              {!isMobile && 'Novo Lead'}
             </button>
             <button
-              onClick={() => setViewMode('kanban')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
-                viewMode === 'kanban' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
-              }`}
+              onClick={handleExportCSV}
+              className="px-3 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm"
             >
-              <Columns className="w-4 h-4" />
-              {!isMobile && 'Kanban'}
+              <Download className="w-4 h-4" />
             </button>
           </div>
-          <button
-            onClick={() => setShowCriarLead(true)}
-            className="px-4 py-2 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            {!isMobile && 'Novo Lead'}
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="px-3 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm"
-          >
-            <Download className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
       {/* Dashboard de Metricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-blue-400" />
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-blue-500/20 rounded-lg">
+              <TrendingUp className="w-4 h-4 text-blue-400" />
             </div>
-            <span className="text-gray-400 text-sm">Leads este mes</span>
+            <span className="text-gray-400 text-xs">Leads este mes</span>
           </div>
-          <p className="text-2xl font-bold text-white">{metricas.leadsEsteMes}</p>
+          <p className="text-xl font-bold text-white">{metricas.leadsEsteMes}</p>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-green-500/20 rounded-lg">
-              <CheckCircle2 className="w-5 h-5 text-green-400" />
+        <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-green-500/20 rounded-lg">
+              <CheckCircle2 className="w-4 h-4 text-green-400" />
             </div>
-            <span className="text-gray-400 text-sm">Taxa conversao</span>
+            <span className="text-gray-400 text-xs">Taxa conversao</span>
           </div>
-          <p className="text-2xl font-bold text-white">{metricas.taxaConversao}%</p>
+          <p className="text-xl font-bold text-white">{metricas.taxaConversao}%</p>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-500/20 rounded-lg">
-              <DollarSign className="w-5 h-5 text-purple-400" />
+        <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-purple-500/20 rounded-lg">
+              <DollarSign className="w-4 h-4 text-purple-400" />
             </div>
-            <span className="text-gray-400 text-sm">Pipeline</span>
+            <span className="text-gray-400 text-xs">Pipeline</span>
           </div>
-          <p className="text-2xl font-bold text-white">{formatCurrency(metricas.valorPipeline)}</p>
+          <p className="text-xl font-bold text-white">{formatCurrency(metricas.valorPipeline)}</p>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-xl p-4">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-amber-500/20 rounded-lg">
-              <Bell className="w-5 h-5 text-amber-400" />
+        <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-amber-500/20 rounded-lg">
+              <Bell className="w-4 h-4 text-amber-400" />
             </div>
-            <span className="text-gray-400 text-sm">Follow-ups</span>
+            <span className="text-gray-400 text-xs">Follow-ups</span>
           </div>
-          <p className="text-2xl font-bold text-white">{metricas.followUpsPendentes}</p>
+          <p className="text-xl font-bold text-white">{metricas.followUpsPendentes}</p>
           {metricas.followUpsPendentes > 0 && (
             <p className="text-xs text-amber-400 mt-1">pendentes</p>
           )}

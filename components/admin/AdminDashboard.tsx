@@ -266,8 +266,8 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         </header>
 
         {/* Area de conteudo */}
-        <div className="p-8">
-          <div className="bg-gray-900 rounded-2xl p-6 min-h-[calc(100vh-12rem)]">
+        <div className="p-4 lg:p-8">
+          <div className="bg-gray-900 rounded-2xl p-4 lg:p-6 min-h-[calc(100vh-12rem)] overflow-x-auto">
             {renderContent()}
           </div>
         </div>
