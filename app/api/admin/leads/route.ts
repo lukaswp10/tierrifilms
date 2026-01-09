@@ -128,6 +128,58 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST - Criar lead manualmente
+export async function POST(request: NextRequest) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { nome, email, telefone, empresa, projeto, tipo_servico, origem, prioridade, data_evento, local_evento, orcamento_estimado } = body;
+
+    // Validar campos obrigatorios
+    if (!nome || !email) {
+      return NextResponse.json({ error: 'Nome e email sao obrigatorios' }, { status: 400 });
+    }
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: 'Email invalido' }, { status: 400 });
+    }
+
+    const leadData: Record<string, unknown> = {
+      nome: nome.substring(0, 200),
+      email: email.toLowerCase().substring(0, 200),
+      telefone: telefone?.substring(0, 20) || null,
+      empresa: empresa?.substring(0, 200) || null,
+      projeto: projeto?.substring(0, 2000) || 'Lead criado manualmente',
+      status: 'novo',
+      tipo_servico: tipo_servico || null,
+      origem: origem || 'outro',
+      prioridade: prioridade || 'media',
+      data_evento: data_evento || null,
+      local_evento: local_evento?.substring(0, 200) || null,
+      orcamento_estimado: orcamento_estimado ? Number(orcamento_estimado) : null,
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from('leads')
+      .insert([leadData])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Erro ao criar lead:', error);
+    return NextResponse.json({ error: 'Erro ao criar lead' }, { status: 500 });
+  }
+}
+
 // PUT - Atualizar lead (todos os campos)
 export async function PUT(request: NextRequest) {
   const session = await getSession();

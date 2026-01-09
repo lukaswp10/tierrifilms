@@ -8,10 +8,13 @@ import {
   closestCorners,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragStartEvent,
   DragEndEvent,
+  DragOverEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -30,6 +33,7 @@ interface KanbanBoardProps {
   onSelectLead: (lead: Lead) => void;
   formatCurrency: (value: number) => string;
   formatDateSimple: (date?: string) => string;
+  isMobile?: boolean;
 }
 
 type StatusKey = 'novo' | 'contatado' | 'proposta' | 'negociando' | 'fechado' | 'perdido';
@@ -55,13 +59,13 @@ function KanbanCard({
   onSelect, 
   formatCurrency, 
   formatDateSimple,
-  isDragging = false 
+  isMobile = false,
 }: { 
   lead: Lead; 
   onSelect: () => void; 
   formatCurrency: (v: number) => string;
   formatDateSimple: (d?: string) => string;
-  isDragging?: boolean;
+  isMobile?: boolean;
 }) {
   const {
     attributes,
@@ -69,6 +73,7 @@ function KanbanCard({
     setNodeRef,
     transform,
     transition,
+    isDragging,
   } = useSortable({ id: lead.id });
 
   const style = {
@@ -91,14 +96,14 @@ function KanbanCard({
       style={style}
       className={`bg-gray-800 rounded-xl p-3 cursor-pointer hover:bg-gray-750 transition-colors border ${
         hasFollowUpPending() ? 'border-amber-500/50' : 'border-gray-700/50'
-      }`}
+      } ${isDragging ? 'shadow-lg ring-2 ring-white/20' : ''}`}
       onClick={onSelect}
     >
       <div className="flex items-start gap-2">
         <button
           {...attributes}
           {...listeners}
-          className="p-1 text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing"
+          className={`p-1 text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing touch-none ${isMobile ? 'p-2' : ''}`}
           onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="w-4 h-4" />
@@ -142,7 +147,7 @@ function KanbanCard({
   );
 }
 
-// Componente da Coluna
+// Componente da Coluna com Droppable
 function KanbanColumn({ 
   status, 
   leads, 
@@ -150,6 +155,8 @@ function KanbanColumn({
   onSelectLead,
   formatCurrency,
   formatDateSimple,
+  isMobile = false,
+  isOver = false,
 }: { 
   status: StatusKey;
   leads: Lead[];
@@ -157,12 +164,23 @@ function KanbanColumn({
   onSelectLead: (lead: Lead) => void;
   formatCurrency: (v: number) => string;
   formatDateSimple: (d?: string) => string;
+  isMobile?: boolean;
+  isOver?: boolean;
 }) {
+  const { setNodeRef } = useDroppable({
+    id: status,
+  });
+  
   const config = statusConfig[status];
   const Icon = config.icon;
 
   return (
-    <div className={`flex-1 min-w-[280px] max-w-[320px] rounded-xl border ${config.bgColor}`}>
+    <div 
+      ref={setNodeRef}
+      className={`flex-shrink-0 rounded-xl border transition-all ${config.bgColor} ${
+        isMobile ? 'w-[200px]' : 'w-[260px]'
+      } ${isOver ? 'ring-2 ring-white/30 scale-[1.02]' : ''}`}
+    >
       {/* Header da coluna */}
       <div className="p-3 border-b border-gray-700/50">
         <div className="flex items-center justify-between">
@@ -182,7 +200,7 @@ function KanbanColumn({
       </div>
 
       {/* Cards */}
-      <div className="p-2 space-y-2 min-h-[200px] max-h-[60vh] overflow-y-auto">
+      <div className={`p-2 space-y-2 min-h-[150px] overflow-y-auto ${isMobile ? 'max-h-[50vh]' : 'max-h-[60vh]'}`}>
         <SortableContext
           items={leads.map(l => l.id)}
           strategy={verticalListSortingStrategy}
@@ -194,13 +212,16 @@ function KanbanColumn({
               onSelect={() => onSelectLead(lead)}
               formatCurrency={formatCurrency}
               formatDateSimple={formatDateSimple}
+              isMobile={isMobile}
             />
           ))}
         </SortableContext>
         
         {leads.length === 0 && (
-          <div className="text-center py-8 text-gray-600 text-sm">
-            Nenhum lead
+          <div className={`text-center py-6 text-gray-600 text-sm border-2 border-dashed border-gray-700/50 rounded-lg ${
+            isOver ? 'border-white/30 bg-white/5' : ''
+          }`}>
+            {isOver ? 'Solte aqui' : 'Arraste leads aqui'}
           </div>
         )}
       </div>
@@ -214,13 +235,21 @@ export default function KanbanBoard({
   onSelectLead,
   formatCurrency,
   formatDateSimple,
+  isMobile = false,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
       },
     }),
     useSensor(KeyboardSensor)
@@ -252,9 +281,30 @@ export default function KanbanBoard({
     setActiveId(event.active.id as string);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    if (!event.over) {
+      setOverColumnId(null);
+      return;
+    }
+
+    const overId = String(event.over.id);
+    
+    // Verificar se over e uma coluna
+    if (Object.keys(statusConfig).includes(overId)) {
+      setOverColumnId(overId);
+    } else {
+      // Se e um lead, encontrar a coluna dele
+      const overLead = leads.find(l => l.id === overId);
+      if (overLead) {
+        setOverColumnId(overLead.status);
+      }
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
+    setOverColumnId(null);
 
     if (!over) return;
 
@@ -262,18 +312,16 @@ export default function KanbanBoard({
     const overId = over.id as string;
 
     // Encontrar a coluna de destino
-    // Se over.id e um lead, pegar o status dele
-    // Se over.id e uma coluna, usar diretamente
     let targetStatus: StatusKey | null = null;
 
-    // Verificar se o over e um lead
-    const overLead = leads.find(l => l.id === overId);
-    if (overLead) {
-      targetStatus = overLead.status as StatusKey;
+    // Verificar se over e uma coluna (drop em area vazia)
+    if (Object.keys(statusConfig).includes(overId)) {
+      targetStatus = overId as StatusKey;
     } else {
-      // over.id pode ser o status da coluna
-      if (Object.keys(statusConfig).includes(overId)) {
-        targetStatus = overId as StatusKey;
+      // Se over e um lead, pegar o status dele
+      const overLead = leads.find(l => l.id === overId);
+      if (overLead) {
+        targetStatus = overLead.status as StatusKey;
       }
     }
 
@@ -290,9 +338,10 @@ export default function KanbanBoard({
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className={`flex gap-3 overflow-x-auto pb-4 ${isMobile ? '-mx-4 px-4' : ''}`}>
         {(Object.keys(columns) as StatusKey[]).map((status) => (
           <KanbanColumn
             key={status}
@@ -302,13 +351,15 @@ export default function KanbanBoard({
             onSelectLead={onSelectLead}
             formatCurrency={formatCurrency}
             formatDateSimple={formatDateSimple}
+            isMobile={isMobile}
+            isOver={overColumnId === status}
           />
         ))}
       </div>
 
       <DragOverlay>
         {activeLead && (
-          <div className="bg-gray-800 rounded-xl p-3 border border-white/20 shadow-xl">
+          <div className="bg-gray-800 rounded-xl p-3 border border-white/20 shadow-xl opacity-90">
             <p className="font-medium text-sm">{activeLead.nome}</p>
             {activeLead.empresa && (
               <p className="text-xs text-gray-500">{activeLead.empresa}</p>
@@ -319,4 +370,3 @@ export default function KanbanBoard({
     </DndContext>
   );
 }
-

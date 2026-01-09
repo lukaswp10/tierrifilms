@@ -118,6 +118,20 @@ export default function AdminClientes() {
   const [templateNome, setTemplateNome] = useState('');
   const [templateMensagem, setTemplateMensagem] = useState('');
   
+  // Criar Lead Manual
+  const [showCriarLead, setShowCriarLead] = useState(false);
+  const [novoLead, setNovoLead] = useState({
+    nome: '',
+    email: '',
+    telefone: '',
+    empresa: '',
+    projeto: '',
+    tipo_servico: '',
+    origem: 'outro',
+    prioridade: 'media',
+  });
+  const [criandoLead, setCriandoLead] = useState(false);
+  
   // Filtros avancados
   const [filtroTipo, setFiltroTipo] = useState('todos');
   const [filtroPrioridade, setFiltroPrioridade] = useState('todos');
@@ -263,6 +277,48 @@ export default function AdminClientes() {
     } catch (error) {
       console.error('Erro ao deletar lead:', error);
     }
+  };
+
+  // Criar lead manual
+  const handleCriarLead = async () => {
+    if (!novoLead.nome || !novoLead.email) {
+      alert('Nome e email sao obrigatorios');
+      return;
+    }
+
+    setCriandoLead(true);
+    try {
+      const res = await fetch('/api/admin/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoLead),
+      });
+
+      if (res.ok) {
+        const lead = await res.json();
+        await loadLeads();
+        setShowCriarLead(false);
+        setNovoLead({
+          nome: '',
+          email: '',
+          telefone: '',
+          empresa: '',
+          projeto: '',
+          tipo_servico: '',
+          origem: 'outro',
+          prioridade: 'media',
+        });
+        // Abrir o lead recem-criado
+        setSelectedLead(lead);
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Erro ao criar lead');
+      }
+    } catch (error) {
+      console.error('Erro ao criar lead:', error);
+      alert('Erro ao criar lead');
+    }
+    setCriandoLead(false);
   };
 
   // Adicionar interacao
@@ -419,47 +475,51 @@ export default function AdminClientes() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className={`mb-6 ${isMobile ? 'space-y-4' : 'flex items-start justify-between'}`}>
         <div>
           <h2 className="text-xl font-semibold">CRM - Gestao de Leads</h2>
           <p className="text-gray-400 text-sm mt-1">Pipeline de vendas e acompanhamento de clientes</p>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle Lista/Kanban */}
-          {!isMobile && (
-            <div className="flex bg-gray-800 rounded-xl p-1">
-              <button
-                onClick={() => setViewMode('lista')}
-                className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
-                  viewMode === 'lista' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <LayoutList className="w-4 h-4" />
-                Lista
-              </button>
-              <button
-                onClick={() => setViewMode('kanban')}
-                className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
-                  viewMode === 'kanban' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                <Columns className="w-4 h-4" />
-                Kanban
-              </button>
-            </div>
-          )}
+        <div className={`flex items-center gap-2 ${isMobile ? 'flex-wrap' : ''}`}>
+          {/* Toggle Lista/Kanban - tambem no mobile */}
+          <div className="flex bg-gray-800 rounded-xl p-1">
+            <button
+              onClick={() => setViewMode('lista')}
+              className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
+                viewMode === 'lista' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <LayoutList className="w-4 h-4" />
+              {!isMobile && 'Lista'}
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
+                viewMode === 'kanban' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Columns className="w-4 h-4" />
+              {!isMobile && 'Kanban'}
+            </button>
+          </div>
+          <button
+            onClick={() => setShowCriarLead(true)}
+            className="px-4 py-2 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            {!isMobile && 'Novo Lead'}
+          </button>
           <button
             onClick={handleExportCSV}
-            className="px-4 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm"
+            className="px-3 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm"
           >
             <Download className="w-4 h-4" />
-            {!isMobile && 'Exportar CSV'}
           </button>
         </div>
       </div>
 
       {/* Dashboard de Metricas */}
-      <div className={`grid gap-4 mb-6 ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}`}>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-4">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -660,19 +720,20 @@ export default function AdminClientes() {
         </div>
       )}
 
-      {/* Kanban View */}
-      {viewMode === 'kanban' && !isMobile && (
+      {/* Kanban View - tambem funciona no mobile */}
+      {viewMode === 'kanban' && (
         <KanbanBoard
           leads={leads}
           onUpdateStatus={(leadId, newStatus) => handleUpdateLead(leadId, { status: newStatus })}
           onSelectLead={setSelectedLead}
           formatCurrency={formatCurrency}
           formatDateSimple={formatDateSimple}
+          isMobile={isMobile}
         />
       )}
 
       {/* Lista de Leads */}
-      {(viewMode === 'lista' || isMobile) && (
+      {viewMode === 'lista' && (
         <>
           {leads.length === 0 ? (
             <div className="text-center py-12 bg-gray-800/30 rounded-xl">
@@ -1050,7 +1111,7 @@ export default function AdminClientes() {
                     <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-4">
                       <div>
                         <label className="block text-sm text-gray-400 mb-2">Tipo de Interacao</label>
-                        <div className="grid grid-cols-5 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                           {(Object.keys(interacaoConfig) as InteracaoTipo[]).map((tipo) => {
                             const config = interacaoConfig[tipo];
                             const Icon = config.icon;
@@ -1329,6 +1390,139 @@ export default function AdminClientes() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Criar Lead */}
+      {showCriarLead && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className={`bg-gray-900 w-full ${isMobile ? 'h-full' : 'max-w-lg rounded-2xl max-h-[90vh]'} flex flex-col`}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+              <h3 className="text-lg font-semibold">Novo Lead</h3>
+              <button
+                onClick={() => setShowCriarLead(false)}
+                className="p-2 text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm text-gray-400 mb-2">Nome *</label>
+                  <input
+                    type="text"
+                    value={novoLead.nome}
+                    onChange={(e) => setNovoLead({ ...novoLead, nome: e.target.value })}
+                    placeholder="Nome completo"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm text-gray-400 mb-2">Email *</label>
+                  <input
+                    type="email"
+                    value={novoLead.email}
+                    onChange={(e) => setNovoLead({ ...novoLead, email: e.target.value })}
+                    placeholder="email@exemplo.com"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Telefone</label>
+                  <input
+                    type="tel"
+                    value={novoLead.telefone}
+                    onChange={(e) => setNovoLead({ ...novoLead, telefone: e.target.value })}
+                    placeholder="(00) 00000-0000"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Empresa</label>
+                  <input
+                    type="text"
+                    value={novoLead.empresa}
+                    onChange={(e) => setNovoLead({ ...novoLead, empresa: e.target.value })}
+                    placeholder="Nome da empresa"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Tipo de Servico</label>
+                  <div className="relative">
+                    <select
+                      value={novoLead.tipo_servico}
+                      onChange={(e) => setNovoLead({ ...novoLead, tipo_servico: e.target.value })}
+                      className={selectClass}
+                    >
+                      <option value="">Selecionar...</option>
+                      <option value="casamento">Casamento</option>
+                      <option value="evento">Evento</option>
+                      <option value="corporativo">Corporativo</option>
+                      <option value="clip">Clip Musical</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Origem</label>
+                  <div className="relative">
+                    <select
+                      value={novoLead.origem}
+                      onChange={(e) => setNovoLead({ ...novoLead, origem: e.target.value })}
+                      className={selectClass}
+                    >
+                      <option value="site">Site</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="google">Google</option>
+                      <option value="indicacao">Indicacao</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm text-gray-400 mb-2">Sobre o Projeto</label>
+                  <textarea
+                    value={novoLead.projeto}
+                    onChange={(e) => setNovoLead({ ...novoLead, projeto: e.target.value })}
+                    placeholder="Descreva o projeto ou interesse do cliente..."
+                    className={`${inputClass} resize-none`}
+                    rows={3}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t border-gray-800">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCriarLead(false)}
+                  className="flex-1 py-3 bg-gray-800 text-gray-300 font-medium rounded-xl hover:bg-gray-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCriarLead}
+                  disabled={criandoLead || !novoLead.nome || !novoLead.email}
+                  className="flex-1 py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {criandoLead ? 'Criando...' : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Criar Lead
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
