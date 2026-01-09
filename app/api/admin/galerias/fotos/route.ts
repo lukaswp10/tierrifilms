@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Adicionar foto
+// POST - Adicionar foto ou video
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) {
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { galeria_id, foto_url, legenda, ordem } = body;
+    const { galeria_id, foto_url, legenda, ordem, tipo } = body;
 
     if (!galeria_id || !foto_url) {
       return NextResponse.json({ error: 'galeria_id e foto_url sao obrigatorios' }, { status: 400 });
@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
         galeria_id,
         foto_url,
         legenda: legenda?.substring(0, 255) || null,
-        ordem: ordem || 0
+        ordem: ordem || 0,
+        tipo: tipo || 'foto'
       })
       .select()
       .single();
@@ -62,8 +63,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Erro ao adicionar foto:', error);
-    return NextResponse.json({ error: 'Erro ao adicionar foto' }, { status: 500 });
+    console.error('Erro ao adicionar midia:', error);
+    return NextResponse.json({ error: 'Erro ao adicionar midia' }, { status: 500 });
   }
 }
 

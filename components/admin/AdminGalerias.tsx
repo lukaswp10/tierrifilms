@@ -1,39 +1,49 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Galeria, GaleriaFoto } from '@/lib/supabase';
+import { Galeria, GaleriaFoto, Categoria } from '@/lib/supabase';
 import { CldUploadWidget } from 'next-cloudinary';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { ChevronLeft, Plus, Image, Trash2, Edit2, X, Star } from 'lucide-react';
+import { 
+  ChevronLeft, ChevronDown, Plus, Image, Trash2, Edit2, X, Star, 
+  Video, Play, Settings, FolderPlus, ImagePlus, Film
+} from 'lucide-react';
 
 type MobileView = 'list' | 'details';
+type MidiaTab = 'todas' | 'fotos' | 'videos';
 
 export default function AdminGalerias() {
   const { isMobile } = useMediaQuery();
   const [galerias, setGalerias] = useState<Galeria[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedGaleria, setSelectedGaleria] = useState<Galeria | null>(null);
-  const [fotos, setFotos] = useState<GaleriaFoto[]>([]);
+  const [midias, setMidias] = useState<GaleriaFoto[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const [editingGaleria, setEditingGaleria] = useState<Partial<Galeria> | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>('list');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>('todas');
+  const [midiaTab, setMidiaTab] = useState<MidiaTab>('todas');
+  const [novaCategoria, setNovaCategoria] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   
-  // useRef para evitar closure stale nos callbacks do CldUploadWidget
   const selectedGaleriaRef = useRef<Galeria | null>(null);
-  const fotosRef = useRef<GaleriaFoto[]>([]);
+  const midiasRef = useRef<GaleriaFoto[]>([]);
 
-  // Mantem refs sincronizadas com state
   useEffect(() => {
     selectedGaleriaRef.current = selectedGaleria;
   }, [selectedGaleria]);
 
   useEffect(() => {
-    fotosRef.current = fotos;
-  }, [fotos]);
+    midiasRef.current = midias;
+  }, [midias]);
 
   useEffect(() => {
     loadGalerias();
+    loadCategorias();
   }, []);
 
   // ==================== API CALLS ====================
@@ -51,21 +61,34 @@ export default function AdminGalerias() {
     setLoading(false);
   };
 
-  const loadFotos = async (galeriaId: string) => {
+  const loadCategorias = async () => {
+    try {
+      const res = await fetch('/api/admin/categorias');
+      if (res.ok) {
+        const data = await res.json();
+        setCategorias(data);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const loadMidias = async (galeriaId: string) => {
     try {
       const res = await fetch(`/api/admin/galerias/fotos?galeria_id=${galeriaId}`);
       if (res.ok) {
         const data = await res.json();
-        setFotos(data);
+        setMidias(data);
       }
     } catch (error) {
-      console.error('Erro ao carregar fotos:', error);
+      console.error('Erro ao carregar midias:', error);
     }
   };
 
   const handleSelectGaleria = async (galeria: Galeria) => {
     setSelectedGaleria(galeria);
-    await loadFotos(galeria.id);
+    setMidiaTab('todas');
+    await loadMidias(galeria.id);
     if (isMobile) {
       setMobileView('details');
     }
@@ -74,7 +97,7 @@ export default function AdminGalerias() {
   const handleBackToList = () => {
     setMobileView('list');
     setSelectedGaleria(null);
-    setFotos([]);
+    setMidias([]);
   };
 
   const handleSaveGaleria = async () => {
@@ -85,14 +108,12 @@ export default function AdminGalerias() {
       let response;
       
       if (editingGaleria.id) {
-        // Atualizar
         response = await fetch('/api/admin/galerias', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(editingGaleria),
         });
       } else {
-        // Criar
         response = await fetch('/api/admin/galerias', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -113,6 +134,15 @@ export default function AdminGalerias() {
       setShowModal(false);
       setEditingGaleria(null);
       await loadGalerias();
+      
+      if (editingGaleria.id && selectedGaleria?.id === editingGaleria.id) {
+        const res = await fetch('/api/admin/galerias');
+        if (res.ok) {
+          const data = await res.json();
+          const updated = data.find((g: Galeria) => g.id === editingGaleria.id);
+          if (updated) setSelectedGaleria(updated);
+        }
+      }
     } catch (error) {
       console.error('Erro ao salvar galeria:', error);
       alert('Erro ao salvar galeria');
@@ -121,13 +151,13 @@ export default function AdminGalerias() {
   };
 
   const handleDeleteGaleria = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta galeria?')) {
+    if (confirm('Tem certeza que deseja excluir esta galeria e todas as suas midias?')) {
       try {
         await fetch(`/api/admin/galerias?id=${id}`, { method: 'DELETE' });
         await loadGalerias();
         if (selectedGaleria?.id === id) {
           setSelectedGaleria(null);
-          setFotos([]);
+          setMidias([]);
           if (isMobile) setMobileView('list');
         }
       } catch (error) {
@@ -136,10 +166,9 @@ export default function AdminGalerias() {
     }
   };
 
-  // Callback para upload de fotos - usa ref para evitar closure stale
   const handleUploadComplete = useCallback(async (result: { info?: { secure_url?: string } }) => {
     const currentGaleria = selectedGaleriaRef.current;
-    const currentFotos = fotosRef.current;
+    const currentMidias = midiasRef.current;
     
     if (!currentGaleria || !result.info?.secure_url) return;
     
@@ -150,30 +179,58 @@ export default function AdminGalerias() {
         body: JSON.stringify({
           galeria_id: currentGaleria.id,
           foto_url: result.info.secure_url,
-          ordem: currentFotos.length + 1,
+          ordem: currentMidias.length + 1,
+          tipo: 'foto'
         }),
       });
       
-      // Recarrega fotos da galeria atual
-      await loadFotos(currentGaleria.id);
+      await loadMidias(currentGaleria.id);
     } catch (error) {
       console.error('Erro ao adicionar foto:', error);
     }
   }, []);
 
-  const handleDeleteFoto = async (fotoId: string) => {
-    if (confirm('Excluir esta foto?')) {
+  const handleAddVideo = async () => {
+    if (!selectedGaleria || !videoUrl.trim()) return;
+    
+    let finalUrl = videoUrl.trim();
+    const youtubeMatch = videoUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
+    if (youtubeMatch) {
+      finalUrl = `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    }
+    
+    try {
+      await fetch('/api/admin/galerias/fotos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          galeria_id: selectedGaleria.id,
+          foto_url: finalUrl,
+          ordem: midias.length + 1,
+          tipo: 'video'
+        }),
+      });
+      
+      await loadMidias(selectedGaleria.id);
+      setVideoUrl('');
+      setShowVideoModal(false);
+    } catch (error) {
+      console.error('Erro ao adicionar video:', error);
+    }
+  };
+
+  const handleDeleteMidia = async (midiaId: string) => {
+    if (confirm('Excluir esta midia?')) {
       try {
-        await fetch(`/api/admin/galerias/fotos?id=${fotoId}`, { method: 'DELETE' });
-        if (selectedGaleria) await loadFotos(selectedGaleria.id);
+        await fetch(`/api/admin/galerias/fotos?id=${midiaId}`, { method: 'DELETE' });
+        if (selectedGaleria) await loadMidias(selectedGaleria.id);
       } catch (error) {
-        console.error('Erro ao deletar foto:', error);
+        console.error('Erro ao deletar midia:', error);
       }
     }
   };
 
-  // Callback para atualizar capa - usa ref para evitar closure stale
-  const handleUpdateCapa = useCallback(async (url: string) => {
+  const handleUpdateCapa = useCallback(async (url: string, tipo: 'imagem' | 'video' = 'imagem') => {
     const currentGaleria = selectedGaleriaRef.current;
     if (!currentGaleria) return;
     
@@ -184,16 +241,55 @@ export default function AdminGalerias() {
         body: JSON.stringify({
           id: currentGaleria.id,
           capa_url: url,
+          capa_tipo: tipo
         }),
       });
       
-      // Atualiza o state local
-      setSelectedGaleria(prev => prev ? { ...prev, capa_url: url } : null);
+      setSelectedGaleria(prev => prev ? { ...prev, capa_url: url, capa_tipo: tipo } : null);
       await loadGalerias();
     } catch (error) {
       console.error('Erro ao atualizar capa:', error);
     }
   }, []);
+
+  const handleAddCategoria = async () => {
+    if (!novaCategoria.trim()) return;
+    
+    try {
+      const res = await fetch('/api/admin/categorias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: novaCategoria.trim() }),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Erro ao criar categoria');
+        return;
+      }
+      
+      await loadCategorias();
+      setNovaCategoria('');
+    } catch (error) {
+      console.error('Erro ao criar categoria:', error);
+    }
+  };
+
+  const handleDeleteCategoria = async (id: string) => {
+    if (confirm('Excluir esta categoria?')) {
+      try {
+        const res = await fetch(`/api/admin/categorias?id=${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const data = await res.json();
+          alert(data.error || 'Erro ao excluir categoria');
+          return;
+        }
+        await loadCategorias();
+      } catch (error) {
+        console.error('Erro ao excluir categoria:', error);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -203,119 +299,178 @@ export default function AdminGalerias() {
     );
   }
 
-  // Estilos comuns
+  // Estilos
   const inputClass = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-white transition-all";
-  const buttonPrimary = "px-4 py-2.5 bg-white text-black text-sm font-medium rounded-xl hover:bg-gray-200 transition-colors";
-  const buttonSecondary = "px-4 py-2.5 bg-gray-800 text-white text-sm rounded-xl hover:bg-gray-700 transition-colors";
+  const selectClass = "w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl focus:outline-none focus:border-white transition-all text-sm appearance-none cursor-pointer";
 
-  // ==================== COMPONENTES INTERNOS ====================
+  // Filtrar galerias
+  const galeriasFiltradas = filtroCategoria === 'todas' 
+    ? galerias 
+    : galerias.filter(g => g.categoria === filtroCategoria);
 
-  // Conta quantas galerias sao principais
+  // Filtrar midias
+  const midiasFiltradas = midiaTab === 'todas' 
+    ? midias 
+    : midias.filter(m => m.tipo === (midiaTab === 'fotos' ? 'foto' : 'video'));
+
+  // Contadores
   const principaisCount = galerias.filter(g => g.is_principal).length;
   const MAX_PRINCIPAIS = 6;
+  const fotosCount = midias.filter(m => m.tipo !== 'video').length;
+  const videosCount = midias.filter(m => m.tipo === 'video').length;
 
-  // Lista de Galerias
+  const isYouTubeUrl = (url: string) => url.includes('youtube.com') || url.includes('youtu.be');
+
+  const getYouTubeThumbnail = (url: string) => {
+    const match = url.match(/(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    return match ? `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg` : null;
+  };
+
+  // ==================== LISTA DE GALERIAS ====================
   const GaleriasList = () => (
-    <div className={isMobile ? '' : 'w-1/3 border-r border-gray-800 pr-6'}>
+    <div className={isMobile ? '' : 'w-80 flex-shrink-0 border-r border-gray-800 pr-6'}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold">Galerias</h2>
-          <p className={`text-xs mt-1 ${principaisCount >= MAX_PRINCIPAIS ? 'text-amber-400' : 'text-green-400'}`}>
+          <p className={`text-xs mt-0.5 ${principaisCount >= MAX_PRINCIPAIS ? 'text-amber-400' : 'text-gray-500'}`}>
             <Star className="w-3 h-3 inline mr-1" />
             {principaisCount}/{MAX_PRINCIPAIS} na Home
           </p>
         </div>
         <button
           onClick={() => {
-            setEditingGaleria({ nome: '', categoria: '', descricao: '' });
+            setEditingGaleria({ nome: '', categoria: '', descricao: '', capa_tipo: 'imagem' });
             setShowModal(true);
           }}
-          className={buttonPrimary}
+          className="p-2.5 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors"
+          title="Nova Galeria"
         >
-          <span className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            {isMobile ? 'Nova' : 'Nova Galeria'}
-          </span>
+          <Plus className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-        {galerias.map((galeria) => (
-          <div
-            key={galeria.id}
-            onClick={() => handleSelectGaleria(galeria)}
-            className={`p-4 rounded-xl cursor-pointer transition-all ${
-              selectedGaleria?.id === galeria.id && !isMobile
-                ? 'bg-white text-black'
-                : 'bg-gray-800/50 hover:bg-gray-800'
-            }`}
+      {/* Filtro Dropdown + Botao Categorias */}
+      <div className="flex gap-2 mb-4">
+        <div className="relative flex-1">
+          <select
+            value={filtroCategoria}
+            onChange={(e) => setFiltroCategoria(e.target.value)}
+            className={selectClass}
           >
-            <div className="flex items-center gap-3">
-              {/* Thumbnail */}
-              <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-700 flex-shrink-0">
-                {galeria.capa_url ? (
-                  <img src={galeria.capa_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Image className="w-5 h-5 text-gray-500" />
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate flex items-center gap-1.5">
-                  {galeria.is_principal && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 flex-shrink-0" />}
-                  <span className="truncate">{galeria.nome}</span>
-                </p>
-                <p className={`text-xs truncate ${
-                  selectedGaleria?.id === galeria.id && !isMobile ? 'text-gray-600' : 'text-gray-500'
-                }`}>
-                  {galeria.categoria}
-                </p>
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteGaleria(galeria.id);
-                }}
-                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
+            <option value="todas">Todas ({galerias.length})</option>
+            {categorias.map(cat => {
+              const count = galerias.filter(g => g.categoria === cat.nome).length;
+              return (
+                <option key={cat.id} value={cat.nome}>
+                  {cat.nome} ({count})
+                </option>
+              );
+            })}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+        </div>
+        <button
+          onClick={() => setShowCategoriaModal(true)}
+          className="p-2.5 bg-gray-800 text-gray-400 rounded-xl hover:bg-gray-700 hover:text-white transition-colors"
+          title="Gerenciar Categorias"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
 
-      <p className="text-xs text-gray-500 mt-4 flex items-center gap-1.5">
-        <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> = Aparece na pagina inicial
-      </p>
+      {/* Lista */}
+      <div className="space-y-2 max-h-[calc(100vh-320px)] overflow-y-auto">
+        {galeriasFiltradas.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Image className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Nenhuma galeria</p>
+          </div>
+        ) : (
+          galeriasFiltradas.map((galeria) => (
+            <div
+              key={galeria.id}
+              onClick={() => handleSelectGaleria(galeria)}
+              className={`p-3 rounded-xl cursor-pointer transition-all ${
+                selectedGaleria?.id === galeria.id && !isMobile
+                  ? 'bg-white text-black'
+                  : 'bg-gray-800/50 hover:bg-gray-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-700 flex-shrink-0 relative">
+                  {galeria.capa_url ? (
+                    <>
+                      <img 
+                        src={galeria.capa_tipo === 'video' ? getYouTubeThumbnail(galeria.capa_url) || galeria.capa_url : galeria.capa_url} 
+                        alt="" 
+                        className="w-full h-full object-cover" 
+                      />
+                      {galeria.capa_tipo === 'video' && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <Play className="w-4 h-4 text-white fill-white" />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Image className="w-4 h-4 text-gray-500" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm flex items-center gap-1">
+                    {galeria.is_principal && <Star className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0" />}
+                    <span className="truncate">{galeria.nome}</span>
+                  </p>
+                  <p className={`text-xs truncate ${
+                    selectedGaleria?.id === galeria.id && !isMobile ? 'text-gray-600' : 'text-gray-500'
+                  }`}>
+                    {galeria.categoria || 'Sem categoria'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteGaleria(galeria.id);
+                  }}
+                  className="p-1.5 text-gray-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 
-  // Detalhes da Galeria
+  // ==================== DETALHES DA GALERIA ====================
   const GaleriaDetails = () => (
-    <div className={isMobile ? '' : 'flex-1 pl-6'}>
+    <div className={isMobile ? '' : 'flex-1 min-w-0 pl-6'}>
       {selectedGaleria ? (
-        <div>
-          {/* Header com botao voltar em mobile */}
+        <div className="space-y-6">
+          {/* Header Mobile */}
           {isMobile && (
             <button
               onClick={handleBackToList}
-              className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 -ml-1"
+              className="flex items-center gap-2 text-gray-400 hover:text-white -ml-1"
             >
               <ChevronLeft className="w-5 h-5" />
               <span className="text-sm">Voltar</span>
             </button>
           )}
 
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-semibold">{selectedGaleria.nome}</h3>
-              <p className="text-sm text-gray-400 mt-1">{selectedGaleria.categoria}</p>
+          {/* Info da Galeria */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-xl font-semibold truncate">{selectedGaleria.nome}</h3>
+              <p className="text-sm text-gray-400 mt-1">{selectedGaleria.categoria || 'Sem categoria'}</p>
               {selectedGaleria.descricao && (
-                <p className="text-sm text-gray-500 mt-2">{selectedGaleria.descricao}</p>
+                <p className="text-sm text-gray-500 mt-2 line-clamp-2">{selectedGaleria.descricao}</p>
               )}
             </div>
             <button
@@ -323,99 +478,177 @@ export default function AdminGalerias() {
                 setEditingGaleria(selectedGaleria);
                 setShowModal(true);
               }}
-              className={buttonSecondary}
+              className="p-2.5 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors flex-shrink-0"
             >
-              <span className="flex items-center gap-2">
-                <Edit2 className="w-4 h-4" />
-                Editar
-              </span>
+              <Edit2 className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Imagem de Capa */}
-          <div className="mb-8">
-            <h4 className="text-sm font-medium text-gray-400 mb-3">Imagem de Capa</h4>
-            <div className="flex flex-col sm:flex-row items-start gap-4">
-              <div className="w-full sm:w-48 h-32 bg-gray-800 rounded-xl overflow-hidden">
+          {/* Capa */}
+          <div className="bg-gray-800/30 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-gray-300">Capa</h4>
+              <span className="text-xs text-gray-500 px-2 py-1 bg-gray-800 rounded-lg">
+                {selectedGaleria.capa_tipo === 'video' ? 'Video' : 'Imagem'}
+              </span>
+            </div>
+            
+            <div className="flex gap-4">
+              {/* Preview */}
+              <div className="w-32 h-20 rounded-xl overflow-hidden bg-gray-800 flex-shrink-0 relative">
                 {selectedGaleria.capa_url ? (
-                  <img
-                    src={selectedGaleria.capa_url}
-                    alt="Capa"
-                    className="w-full h-full object-cover"
-                  />
+                  <>
+                    <img
+                      src={selectedGaleria.capa_tipo === 'video' ? getYouTubeThumbnail(selectedGaleria.capa_url) || '' : selectedGaleria.capa_url}
+                      alt="Capa"
+                      className="w-full h-full object-cover"
+                    />
+                    {selectedGaleria.capa_tipo === 'video' && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <Play className="w-6 h-6 text-white fill-white" />
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-500">
-                    <Image className="w-8 h-8" />
+                  <div className="w-full h-full flex items-center justify-center text-gray-600">
+                    <Image className="w-6 h-6" />
                   </div>
                 )}
               </div>
-              {/* key forca re-render quando galeria muda, evitando closure stale */}
-              <CldUploadWidget
-                key={`capa-${selectedGaleria.id}`}
-                uploadPreset="tierrifilms"
-                options={{ folder: 'tierrifilms/capas' }}
-                onSuccess={(result) => {
-                  const r = result as { info?: { secure_url?: string } };
-                  if (r.info?.secure_url) handleUpdateCapa(r.info.secure_url);
-                }}
-              >
-                {({ open }) => (
-                  <button
-                    onClick={() => open()}
-                    className={buttonSecondary}
-                  >
-                    {selectedGaleria.capa_url ? 'Trocar Capa' : 'Adicionar Capa'}
-                  </button>
-                )}
-              </CldUploadWidget>
+
+              {/* Botoes */}
+              <div className="flex flex-col gap-2 flex-1">
+                <CldUploadWidget
+                  key={`capa-${selectedGaleria.id}`}
+                  uploadPreset="tierrifilms"
+                  options={{ folder: 'tierrifilms/capas' }}
+                  onSuccess={(result) => {
+                    const r = result as { info?: { secure_url?: string } };
+                    if (r.info?.secure_url) handleUpdateCapa(r.info.secure_url, 'imagem');
+                  }}
+                >
+                  {({ open }) => (
+                    <button 
+                      onClick={() => open()} 
+                      className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      <ImagePlus className="w-4 h-4" />
+                      <span>Imagem</span>
+                    </button>
+                  )}
+                </CldUploadWidget>
+                <button
+                  onClick={() => {
+                    const url = prompt('Cole a URL do video do YouTube:');
+                    if (url) {
+                      const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/);
+                      if (youtubeMatch) {
+                        handleUpdateCapa(`https://www.youtube.com/embed/${youtubeMatch[1]}`, 'video');
+                      } else {
+                        alert('URL do YouTube invalida');
+                      }
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <Film className="w-4 h-4" />
+                  <span>Video</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Fotos da Galeria */}
+          {/* Midias */}
           <div>
+            {/* Header Midias */}
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-sm font-medium text-gray-400">
-                Fotos <span className="text-gray-600">({fotos.length})</span>
-              </h4>
-              {/* key forca re-render quando galeria muda */}
-              <CldUploadWidget
-                key={`fotos-${selectedGaleria.id}`}
-                uploadPreset="tierrifilms"
-                options={{ 
-                  folder: `tierrifilms/galerias/${selectedGaleria.slug}`,
-                  multiple: true,
-                  maxFiles: 50,
-                }}
-                onSuccess={(result) => {
-                  const r = result as { info?: { secure_url?: string } };
-                  handleUploadComplete(r);
-                }}
-              >
-                {({ open }) => (
-                  <button onClick={() => open()} className={buttonPrimary}>
-                    <span className="flex items-center gap-2">
+              <div>
+                <h4 className="text-sm font-medium text-gray-300">Midias</h4>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {fotosCount} foto{fotosCount !== 1 && 's'}, {videosCount} video{videosCount !== 1 && 's'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowVideoModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <Video className="w-4 h-4" />
+                  <span className="hidden sm:inline">Video</span>
+                </button>
+                <CldUploadWidget
+                  key={`fotos-${selectedGaleria.id}`}
+                  uploadPreset="tierrifilms"
+                  options={{ 
+                    folder: `tierrifilms/galerias/${selectedGaleria.slug}`,
+                    multiple: true,
+                    maxFiles: 50,
+                  }}
+                  onSuccess={(result) => {
+                    const r = result as { info?: { secure_url?: string } };
+                    handleUploadComplete(r);
+                  }}
+                >
+                  {({ open }) => (
+                    <button 
+                      onClick={() => open()} 
+                      className="flex items-center gap-1.5 px-3 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                    >
                       <Plus className="w-4 h-4" />
-                      Adicionar Fotos
-                    </span>
-                  </button>
-                )}
-              </CldUploadWidget>
+                      <span className="hidden sm:inline">Fotos</span>
+                    </button>
+                  )}
+                </CldUploadWidget>
+              </div>
             </div>
 
-            {fotos.length > 0 ? (
-              <div className={`grid gap-2 ${isMobile ? 'grid-cols-2' : 'grid-cols-3 lg:grid-cols-4'}`}>
-                {fotos.map((foto) => (
-                  <div key={foto.id} className="relative group aspect-square">
-                    <img
-                      src={foto.foto_url}
-                      alt=""
-                      className="w-full h-full object-cover rounded-xl"
-                    />
+            {/* Tabs de filtro */}
+            {midias.length > 0 && (
+              <div className="flex gap-1 mb-4 p-1 bg-gray-800/50 rounded-lg w-fit">
+                {(['todas', 'fotos', 'videos'] as MidiaTab[]).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setMidiaTab(tab)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                      midiaTab === tab 
+                        ? 'bg-white text-black' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {tab === 'todas' ? `Todas (${midias.length})` : tab === 'fotos' ? `Fotos (${fotosCount})` : `Videos (${videosCount})`}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Grid de Midias */}
+            {midiasFiltradas.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {midiasFiltradas.map((midia) => (
+                  <div key={midia.id} className="relative group aspect-square">
+                    {midia.tipo === 'video' ? (
+                      <>
+                        <img
+                          src={isYouTubeUrl(midia.foto_url) ? getYouTubeThumbnail(midia.foto_url) || '' : ''}
+                          alt=""
+                          className="w-full h-full object-cover rounded-xl bg-gray-800"
+                        />
+                        <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                          <Play className="w-8 h-8 text-white fill-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <img
+                        src={midia.foto_url}
+                        alt=""
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                    )}
                     <button
-                      onClick={() => handleDeleteFoto(foto.id)}
-                      className="absolute top-2 right-2 w-8 h-8 bg-black/70 hover:bg-red-500 rounded-full text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                      onClick={() => handleDeleteMidia(midia.id)}
+                      className="absolute top-2 right-2 w-7 h-7 bg-black/70 hover:bg-red-500 rounded-full text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -423,8 +656,8 @@ export default function AdminGalerias() {
             ) : (
               <div className="text-center py-12 bg-gray-800/30 rounded-xl border-2 border-dashed border-gray-700">
                 <Image className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500">Nenhuma foto ainda</p>
-                <p className="text-gray-600 text-sm mt-1">Clique em &quot;Adicionar Fotos&quot; para comecar</p>
+                <p className="text-gray-500">Nenhuma midia ainda</p>
+                <p className="text-gray-600 text-sm mt-1">Adicione fotos ou videos</p>
               </div>
             )}
           </div>
@@ -432,30 +665,27 @@ export default function AdminGalerias() {
       ) : (
         <div className="flex flex-col items-center justify-center h-96 text-gray-500">
           <Image className="w-12 h-12 mb-4 text-gray-600" />
-          <p>Selecione uma galeria para editar</p>
+          <p>Selecione uma galeria</p>
         </div>
       )}
     </div>
   );
 
   // ==================== RENDER ====================
-
   return (
     <div>
-      {/* Layout Mobile */}
       {isMobile ? (
         <div>
           {mobileView === 'list' ? <GaleriasList /> : <GaleriaDetails />}
         </div>
       ) : (
-        // Layout Desktop
-        <div className="flex gap-6 min-h-[600px]">
+        <div className="flex min-h-[600px]">
           <GaleriasList />
           <GaleriaDetails />
         </div>
       )}
 
-      {/* Modal de Edicao */}
+      {/* Modal Nova/Editar Galeria */}
       {showModal && editingGaleria && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className={`bg-gray-900 rounded-2xl p-6 w-full ${isMobile ? 'max-h-[90vh] overflow-y-auto' : 'max-w-md'}`}>
@@ -464,10 +694,7 @@ export default function AdminGalerias() {
                 {editingGaleria.id ? 'Editar Galeria' : 'Nova Galeria'}
               </h3>
               <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingGaleria(null);
-                }}
+                onClick={() => { setShowModal(false); setEditingGaleria(null); }}
                 className="p-2 text-gray-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
@@ -488,18 +715,19 @@ export default function AdminGalerias() {
 
               <div>
                 <label className="block text-sm text-gray-400 mb-2">Categoria</label>
-                <select
-                  value={editingGaleria.categoria || ''}
-                  onChange={(e) => setEditingGaleria({ ...editingGaleria, categoria: e.target.value })}
-                  className={inputClass}
-                >
-                  <option value="">Selecione...</option>
-                  <option value="Casamento">Casamento</option>
-                  <option value="Evento">Evento</option>
-                  <option value="Corporativo">Corporativo</option>
-                  <option value="Festa">Festa</option>
-                  <option value="Outro">Outro</option>
-                </select>
+                <div className="relative">
+                  <select
+                    value={editingGaleria.categoria || ''}
+                    onChange={(e) => setEditingGaleria({ ...editingGaleria, categoria: e.target.value })}
+                    className={inputClass + ' appearance-none cursor-pointer'}
+                  >
+                    <option value="">Selecione...</option>
+                    {categorias.map(cat => (
+                      <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </div>
               </div>
 
               <div>
@@ -524,14 +752,14 @@ export default function AdminGalerias() {
                 />
               </div>
 
-              {/* Toggle Mostrar na Home */}
+              {/* Toggle Home */}
               <div className="pt-2">
-                <label className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl cursor-pointer group">
+                <label className="flex items-center justify-between p-4 bg-gray-800/50 rounded-xl cursor-pointer">
                   <div className="flex items-center gap-3">
                     <Star className={`w-5 h-5 ${editingGaleria.is_principal ? 'text-amber-400 fill-amber-400' : 'text-gray-500'}`} />
                     <div>
-                      <p className="text-sm font-medium">Mostrar na Pagina Inicial</p>
-                      <p className="text-xs text-gray-500">Aparece na secao Cases da home</p>
+                      <p className="text-sm font-medium">Mostrar na Home</p>
+                      <p className="text-xs text-gray-500">Secao Cases</p>
                     </div>
                   </div>
                   <div className="relative">
@@ -544,8 +772,8 @@ export default function AdminGalerias() {
                     />
                     <div className={`w-11 h-6 rounded-full transition-colors ${
                       !editingGaleria.is_principal && principaisCount >= MAX_PRINCIPAIS 
-                        ? 'bg-gray-700 cursor-not-allowed' 
-                        : 'bg-gray-600 peer-checked:bg-amber-500 group-hover:bg-gray-500'
+                        ? 'bg-gray-700' 
+                        : 'bg-gray-600 peer-checked:bg-amber-500'
                     }`}>
                       <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
                         editingGaleria.is_principal ? 'translate-x-5' : ''
@@ -554,30 +782,137 @@ export default function AdminGalerias() {
                   </div>
                 </label>
                 {!editingGaleria.is_principal && principaisCount >= MAX_PRINCIPAIS && (
-                  <p className="text-xs text-amber-400 mt-2 px-1">
-                    Limite de {MAX_PRINCIPAIS} galerias na home atingido. Desmarque outra para adicionar esta.
-                  </p>
+                  <p className="text-xs text-amber-400 mt-2 px-1">Limite de {MAX_PRINCIPAIS} atingido</p>
                 )}
               </div>
             </div>
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => {
-                  setShowModal(false);
-                  setEditingGaleria(null);
-                }}
+                onClick={() => { setShowModal(false); setEditingGaleria(null); }}
                 disabled={saving}
-                className={`flex-1 py-3 ${buttonSecondary}`}
+                className="flex-1 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveGaleria}
                 disabled={saving}
-                className={`flex-1 py-3 ${buttonPrimary} disabled:opacity-50`}
+                className="flex-1 py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Categorias */}
+      {showCategoriaModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className={`bg-gray-900 rounded-2xl p-6 w-full ${isMobile ? 'max-h-[90vh] overflow-y-auto' : 'max-w-md'}`}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Categorias</h3>
+              <button onClick={() => setShowCategoriaModal(false)} className="p-2 text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex gap-2 mb-6">
+              <input
+                type="text"
+                value={novaCategoria}
+                onChange={(e) => setNovaCategoria(e.target.value)}
+                className={`${inputClass} flex-1`}
+                placeholder="Nova categoria..."
+                onKeyDown={(e) => e.key === 'Enter' && handleAddCategoria()}
+              />
+              <button
+                onClick={handleAddCategoria}
+                disabled={!novaCategoria.trim()}
+                className="px-4 py-3 bg-white text-black rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                <FolderPlus className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {categorias.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">Nenhuma categoria</p>
+              ) : (
+                categorias.map(cat => {
+                  const count = galerias.filter(g => g.categoria === cat.nome).length;
+                  return (
+                    <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-xl">
+                      <div>
+                        <p className="font-medium text-sm">{cat.nome}</p>
+                        <p className="text-xs text-gray-500">{count} galeria{count !== 1 && 's'}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCategoria(cat.id)}
+                        className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowCategoriaModal(false)}
+              className="w-full mt-6 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Video */}
+      {showVideoModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className={`bg-gray-900 rounded-2xl p-6 w-full ${isMobile ? '' : 'max-w-md'}`}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold">Adicionar Video</h3>
+              <button onClick={() => { setShowVideoModal(false); setVideoUrl(''); }} className="p-2 text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">URL do YouTube</label>
+                <input
+                  type="text"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  className={inputClass}
+                  placeholder="https://youtube.com/watch?v=..."
+                />
+              </div>
+
+              {videoUrl && isYouTubeUrl(videoUrl) && (
+                <div className="aspect-video bg-gray-800 rounded-xl overflow-hidden">
+                  <img src={getYouTubeThumbnail(videoUrl) || ''} alt="Preview" className="w-full h-full object-cover" />
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setShowVideoModal(false); setVideoUrl(''); }}
+                className="flex-1 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddVideo}
+                disabled={!videoUrl.trim() || !isYouTubeUrl(videoUrl)}
+                className="flex-1 py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Adicionar
               </button>
             </div>
           </div>

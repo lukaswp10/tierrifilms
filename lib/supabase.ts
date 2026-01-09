@@ -21,6 +21,13 @@ export interface Configuracao {
   tipo: 'texto' | 'imagem' | 'video';
 }
 
+export interface Categoria {
+  id: string;
+  nome: string;
+  ordem: number;
+  created_at: string;
+}
+
 export interface Galeria {
   id: string;
   nome: string;
@@ -28,6 +35,7 @@ export interface Galeria {
   categoria: string;
   descricao?: string;
   capa_url?: string;
+  capa_tipo?: 'imagem' | 'video';
   video_url?: string;
   ordem: number;
   is_principal: boolean;
@@ -41,7 +49,11 @@ export interface GaleriaFoto {
   foto_url: string;
   legenda?: string;
   ordem: number;
+  tipo?: 'foto' | 'video';
 }
+
+// Alias para compatibilidade - midia pode ser foto ou video
+export type GaleriaMidia = GaleriaFoto;
 
 export interface Equipe {
   id: string;
@@ -150,6 +162,17 @@ export async function getFotosDaGaleria(galeriaId: string): Promise<GaleriaFoto[
     .from('galeria_fotos')
     .select('*')
     .eq('galeria_id', galeriaId)
+    .order('ordem', { ascending: true });
+  
+  if (error) return [];
+  return data || [];
+}
+
+// Funcoes de busca - Categorias
+export async function getCategorias(): Promise<Categoria[]> {
+  const { data, error } = await supabase
+    .from('categorias')
+    .select('*')
     .order('ordem', { ascending: true });
   
   if (error) return [];

@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         categoria: categoria?.trim().substring(0, 100) || null,
         descricao: descricao || null,
         capa_url: capa_url || null,
+        capa_tipo: body.capa_tipo || 'imagem',
         video_url: video_url || null,
         ordem: ordem || 0,
         is_principal: is_principal || false
@@ -138,6 +139,7 @@ export async function PUT(request: NextRequest) {
     if (categoria !== undefined) updateData.categoria = categoria?.trim().substring(0, 100) || null;
     if (descricao !== undefined) updateData.descricao = descricao || null;
     if (capa_url !== undefined) updateData.capa_url = capa_url || null;
+    if (body.capa_tipo !== undefined) updateData.capa_tipo = body.capa_tipo || 'imagem';
     if (video_url !== undefined) updateData.video_url = video_url || null;
     if (ordem !== undefined) updateData.ordem = ordem;
     if (is_principal !== undefined) updateData.is_principal = is_principal;
