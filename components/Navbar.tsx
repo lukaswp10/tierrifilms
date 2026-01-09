@@ -10,29 +10,29 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { configs } = useConfigs();
 
-  // Links editaveis pelo admin
+  // Links editaveis (sem fallbacks - so mostra se tiver label)
   const navLinks = [
     { 
-      label: configs['nav_link1_label'] || "INICIO", 
-      href: configs['nav_link1_href'] || "#" 
+      label: configs['nav_link1_label'] || '', 
+      href: configs['nav_link1_href'] || '#' 
     },
     { 
-      label: configs['nav_link2_label'] || "SOBRE", 
-      href: configs['nav_link2_href'] || "#sobre" 
+      label: configs['nav_link2_label'] || '', 
+      href: configs['nav_link2_href'] || '#' 
     },
     { 
-      label: configs['nav_link3_label'] || "CASES", 
-      href: configs['nav_link3_href'] || "#portfolio" 
+      label: configs['nav_link3_label'] || '', 
+      href: configs['nav_link3_href'] || '#' 
     },
     { 
-      label: configs['nav_link4_label'] || "SERVICOS", 
-      href: configs['nav_link4_href'] || "#servicos" 
+      label: configs['nav_link4_label'] || '', 
+      href: configs['nav_link4_href'] || '#' 
     },
     { 
-      label: configs['nav_link5_label'] || "CONTATO", 
-      href: configs['nav_link5_href'] || "#contato" 
+      label: configs['nav_link5_label'] || '', 
+      href: configs['nav_link5_href'] || '#' 
     },
-  ].filter(link => link.label); // Remove links vazios
+  ].filter(link => link.label); // Remove links sem label
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();

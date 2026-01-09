@@ -19,11 +19,11 @@ export default function Contact() {
   });
   const [emailError, setEmailError] = useState('');
 
-  // Numero do WhatsApp do banco ou fallback
+  // Numero do WhatsApp (mantendo fallback pois e essencial para funcionar)
   const whatsappNumber = configs['whatsapp'] || "5511999999999";
 
-  // Titulo da secao
-  const titulo = configs['contato_titulo'] || 'BORA FALAR!';
+  // Titulo da secao (sem fallback)
+  const titulo = configs['contato_titulo'] || '';
 
   // Validacao de email
   const isValidEmail = (email: string): boolean => {
@@ -66,21 +66,23 @@ ${formState.projeto}`.trim();
 
   return (
     <section id="contato" className="w-full py-16 md:py-24 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
-      {/* Titulo */}
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={isInView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8 }}
-        className="text-center mb-16"
-      >
-        <h2 className="title-large">
-          {titulo.split(' ').map((word, i) => (
-            <span key={i} className={`text-white ${i > 0 ? 'text-italic' : ''}`}>
-              {word}{' '}
-            </span>
-          ))}
-        </h2>
-      </motion.div>
+      {/* Titulo (so renderiza se tiver) */}
+      {titulo && (
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-16"
+        >
+          <h2 className="title-large">
+            {titulo.split(' ').map((word, i) => (
+              <span key={i} className={`text-white ${i > 0 ? 'text-italic' : ''}`}>
+                {word}{' '}
+              </span>
+            ))}
+          </h2>
+        </motion.div>
+      )}
 
       {/* Formulario */}
       <motion.div

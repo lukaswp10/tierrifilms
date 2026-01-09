@@ -5,22 +5,20 @@ import { motion } from 'framer-motion';
 import { LogoText } from './Logo';
 import { useConfigs } from '@/lib/useConfigs';
 
-// Video de demonstracao gratuito (Pexels) - cinematografico
-const DEFAULT_VIDEO = 'https://videos.pexels.com/video-files/3015510/3015510-hd_1920_1080_24fps.mp4';
-
 export default function Hero() {
   const { configs, loading } = useConfigs();
   const [videoLoaded, setVideoLoaded] = useState(false);
 
+  // Linhas do titulo (sem fallbacks - vazio = nao aparece)
   const titleLines = [
-    { text: configs['hero_linha1'] || 'ESPECIALISTAS', style: "text-outline" },
-    { text: configs['hero_linha2'] || 'EM CAPTAR', style: "text-white" },
-    { text: configs['hero_linha3'] || 'MOMENTOS', style: "text-white text-italic" },
-    { text: configs['hero_linha4'] || 'REAIS', style: "text-outline text-italic" },
-  ];
+    { text: configs['hero_linha1'] || '', style: "text-outline" },
+    { text: configs['hero_linha2'] || '', style: "text-white" },
+    { text: configs['hero_linha3'] || '', style: "text-white text-italic" },
+    { text: configs['hero_linha4'] || '', style: "text-outline text-italic" },
+  ].filter(line => line.text); // Remove linhas vazias
 
-  // Usa video configurado pelo admin ou o video de demonstracao
-  const videoUrl = configs['video_fundo'] || DEFAULT_VIDEO;
+  // Video de fundo (se vazio, nao renderiza video)
+  const videoUrl = configs['video_fundo'] || '';
 
   return (
     <section className="w-full min-h-[70vh] md:min-h-screen flex flex-col justify-center items-center px-4 md:px-8 lg:px-16 py-8 md:py-20 bg-black overflow-hidden relative">
@@ -33,20 +31,22 @@ export default function Hero() {
         />
       )}
 
-      {/* Video de fundo com otimizacoes */}
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        onLoadedData={() => setVideoLoaded(true)}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-          videoLoaded ? 'opacity-30' : 'opacity-0'
-        }`}
-      >
-        <source src={videoUrl} type="video/mp4" />
-      </video>
+      {/* Video de fundo (so renderiza se tiver URL) */}
+      {videoUrl && (
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          onLoadedData={() => setVideoLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+            videoLoaded ? 'opacity-30' : 'opacity-0'
+          }`}
+        >
+          <source src={videoUrl} type="video/mp4" />
+        </video>
+      )}
 
       {/* Titulo Principal - Cada linha aparece em sequencia */}
       <motion.div

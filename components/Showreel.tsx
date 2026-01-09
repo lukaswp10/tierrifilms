@@ -13,12 +13,12 @@ export default function Showreel() {
   const { configs } = useConfigs();
   const [showVideo, setShowVideo] = useState(false);
 
-  // Textos editaveis pelo admin
-  const titulo = configs['showreel_titulo'] || 'SHOWREEL';
-  const subtitulo = configs['showreel_subtitulo'] || 'TIERRIFILMS';
-  const texto = configs['showreel_texto'] || 'Eternize o Real,';
-  const local = configs['showreel_local'] || 'SP (BR)';
-  const imagemUrl = configs['showreel_imagem'] || 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=2071&auto=format&fit=crop';
+  // Textos editaveis pelo admin (sem fallbacks - vazio = nao aparece)
+  const titulo = configs['showreel_titulo'] || '';
+  const subtitulo = configs['showreel_subtitulo'] || '';
+  const texto = configs['showreel_texto'] || '';
+  const local = configs['showreel_local'] || '';
+  const imagemUrl = configs['showreel_imagem'] || '';
   const videoUrl = configs['showreel_video_url'] || '';
 
   const handlePlayClick = () => {
@@ -38,29 +38,33 @@ export default function Showreel() {
           className="relative aspect-video bg-gray-900 mb-8 overflow-hidden group cursor-pointer"
           onClick={handlePlayClick}
         >
-          {/* Imagem de fundo */}
-          <Image
-            src={imagemUrl}
-            alt={titulo}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
-            sizes="(max-width: 1200px) 100vw, 1200px"
-          />
+          {/* Imagem de fundo (se nao tiver, fica preto) */}
+          {imagemUrl && (
+            <Image
+              src={imagemUrl}
+              alt={titulo || 'Showreel'}
+              fill
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              sizes="(max-width: 1200px) 100vw, 1200px"
+            />
+          )}
           <div className="absolute inset-0 bg-black/40" />
           
-          {/* Play Button */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 md:w-24 md:h-24 border-2 border-white rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-white">
-              <Play className="w-8 h-8 md:w-10 md:h-10 text-white group-hover:text-black ml-1" />
+          {/* Play Button (so mostra se tiver video) */}
+          {videoUrl && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-20 h-20 md:w-24 md:h-24 border-2 border-white rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-white">
+                <Play className="w-8 h-8 md:w-10 md:h-10 text-white group-hover:text-black ml-1" />
+              </div>
             </div>
-          </div>
+          )}
           
-          {/* Texto sobre o video */}
+          {/* Texto sobre o video (so renderiza se tiver valor) */}
           <div className="absolute bottom-0 right-0 p-6 md:p-10 text-right">
-            <p className="text-3xl md:text-5xl lg:text-6xl font-normal uppercase">{titulo}</p>
-            <p className="text-2xl md:text-4xl lg:text-5xl font-normal uppercase">{subtitulo}</p>
-            <p className="text-xl md:text-2xl lg:text-3xl font-light italic mt-2">{texto}</p>
-            <p className="text-lg md:text-xl font-light tracking-wider mt-1">{local}</p>
+            {titulo && <p className="text-3xl md:text-5xl lg:text-6xl font-normal uppercase">{titulo}</p>}
+            {subtitulo && <p className="text-2xl md:text-4xl lg:text-5xl font-normal uppercase">{subtitulo}</p>}
+            {texto && <p className="text-xl md:text-2xl lg:text-3xl font-light italic mt-2">{texto}</p>}
+            {local && <p className="text-lg md:text-xl font-light tracking-wider mt-1">{local}</p>}
           </div>
           
           {/* Logo */}
