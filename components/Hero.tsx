@@ -1,11 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { LogoText } from './Logo';
 import { useConfigs } from '@/lib/useConfigs';
 
+// Video de demonstracao gratuito (Pexels) - cinematografico
+const DEFAULT_VIDEO = 'https://videos.pexels.com/video-files/3015510/3015510-hd_1920_1080_24fps.mp4';
+
 export default function Hero() {
   const { configs, loading } = useConfigs();
+  const [videoLoaded, setVideoLoaded] = useState(false);
 
   const titleLines = [
     { text: configs['hero_linha1'] || 'ESPECIALISTAS', style: "text-outline" },
@@ -14,20 +19,34 @@ export default function Hero() {
     { text: configs['hero_linha4'] || 'REAIS', style: "text-outline text-italic" },
   ];
 
+  // Usa video configurado pelo admin ou o video de demonstracao
+  const videoUrl = configs['video_fundo'] || DEFAULT_VIDEO;
+
   return (
-    <section className="w-full min-h-[70vh] md:min-h-screen flex flex-col justify-center items-center px-4 md:px-8 lg:px-16 py-8 md:py-20 bg-black overflow-hidden">
-      {/* Video de fundo (opcional) */}
-      {configs['video_fundo'] && (
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-30"
-        >
-          <source src={configs['video_fundo']} type="video/mp4" />
-        </video>
+    <section className="w-full min-h-[70vh] md:min-h-screen flex flex-col justify-center items-center px-4 md:px-8 lg:px-16 py-8 md:py-20 bg-black overflow-hidden relative">
+      
+      {/* Poster/fallback enquanto video carrega */}
+      {!videoLoaded && (
+        <div 
+          className="absolute inset-0 bg-gradient-to-b from-gray-900 to-black opacity-50"
+          aria-hidden="true"
+        />
       )}
+
+      {/* Video de fundo com otimizacoes */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        onLoadedData={() => setVideoLoaded(true)}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+          videoLoaded ? 'opacity-30' : 'opacity-0'
+        }`}
+      >
+        <source src={videoUrl} type="video/mp4" />
+      </video>
 
       {/* Titulo Principal - Cada linha aparece em sequencia */}
       <motion.div

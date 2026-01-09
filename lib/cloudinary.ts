@@ -1,3 +1,4 @@
+// Este arquivo usa o SDK Cloudinary (Node.js) - apenas para Server Components e API routes
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -54,4 +55,3 @@ export function getOptimizedImageUrl(publicId: string, options?: {
     crop: 'fill',
   });
 }
-

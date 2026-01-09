@@ -6,6 +6,7 @@ import { useRef, useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase, Galeria } from '@/lib/supabase';
+import { getImageBlurUrl } from '@/lib/image-utils';
 
 export default function Portfolio() {
   const ref = useRef(null);
@@ -58,49 +59,56 @@ export default function Portfolio() {
       </motion.div>
 
       <div className="masonry-grid">
-        {galerias.map((galeria, index) => (
-          <Link key={galeria.id} href={`/galeria/${galeria.slug}`}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 30 }}
-              animate={isInView ? { opacity: 1, scale: 1, y: 0 } : {}}
-              transition={{ duration: 0.6, delay: 0.1 + index * 0.1 }}
-              className="relative aspect-[4/3] overflow-hidden cursor-pointer group"
-              onMouseEnter={() => setHoveredProject(galeria.id)}
-              onMouseLeave={() => setHoveredProject(null)}
-              whileHover={{ scale: 1.02 }}
-            >
-              {galeria.capa_url ? (
-                <Image
-                  src={galeria.capa_url}
-                  alt={galeria.nome}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-110"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-800" />
-              )}
-              
-              <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-300 md:opacity-0 md:bg-black md:via-transparent ${
-                hoveredProject === galeria.id ? 'md:opacity-60' : ''
-              }`} />
-              
-              <div className={`absolute inset-0 p-6 flex flex-col justify-end transition-all duration-300 md:opacity-0 md:translate-y-4 ${
-                hoveredProject === galeria.id ? 'md:opacity-100 md:translate-y-0' : ''
-              }`}>
-                <span className="text-xs uppercase tracking-widest text-gray-400 mb-2">
-                  {galeria.categoria}
-                </span>
-                <h3 className="text-lg md:text-xl lg:text-2xl font-normal uppercase mb-2">
-                  {galeria.nome}
-                </h3>
-                <p className="text-gray-300 text-xs md:text-sm font-light">
-                  {galeria.descricao}
-                </p>
-              </div>
-            </motion.div>
-          </Link>
-        ))}
+        {galerias.map((galeria, index) => {
+          const blurUrl = galeria.capa_url ? getImageBlurUrl(galeria.capa_url) : '';
+          
+          return (
+            <Link key={galeria.id} href={`/galeria/${galeria.slug}`}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                animate={isInView ? { opacity: 1, scale: 1, y: 0 } : {}}
+                transition={{ duration: 0.6, delay: 0.1 + index * 0.1 }}
+                className="relative aspect-[4/3] overflow-hidden cursor-pointer group"
+                onMouseEnter={() => setHoveredProject(galeria.id)}
+                onMouseLeave={() => setHoveredProject(null)}
+                whileHover={{ scale: 1.02 }}
+              >
+                {galeria.capa_url ? (
+                  <Image
+                    src={galeria.capa_url}
+                    alt={galeria.nome}
+                    fill
+                    priority={index === 0}
+                    placeholder={blurUrl ? 'blur' : 'empty'}
+                    blurDataURL={blurUrl || undefined}
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gray-800" />
+                )}
+                
+                <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-300 md:opacity-0 md:bg-black md:via-transparent ${
+                  hoveredProject === galeria.id ? 'md:opacity-60' : ''
+                }`} />
+                
+                <div className={`absolute inset-0 p-6 flex flex-col justify-end transition-all duration-300 md:opacity-0 md:translate-y-4 ${
+                  hoveredProject === galeria.id ? 'md:opacity-100 md:translate-y-0' : ''
+                }`}>
+                  <span className="text-xs uppercase tracking-widest text-gray-400 mb-2">
+                    {galeria.categoria}
+                  </span>
+                  <h3 className="text-lg md:text-xl lg:text-2xl font-normal uppercase mb-2">
+                    {galeria.nome}
+                  </h3>
+                  <p className="text-gray-300 text-xs md:text-sm font-light">
+                    {galeria.descricao}
+                  </p>
+                </div>
+              </motion.div>
+            </Link>
+          );
+        })}
       </div>
 
       {galerias.length > 0 && (

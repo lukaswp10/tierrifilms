@@ -3,8 +3,9 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Galeria, GaleriaFoto } from '@/lib/supabase';
+import { getImageBlurUrl } from '@/lib/image-utils';
 
 interface Props {
   galeria: Galeria;
@@ -13,6 +14,26 @@ interface Props {
 
 export default function GaleriaDetalhes({ galeria, fotos }: Props) {
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(12);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Lazy loading com IntersectionObserver
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < fotos.length) {
+          setVisibleCount(prev => Math.min(prev + 12, fotos.length));
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+    
+    return () => observer.disconnect();
+  }, [visibleCount, fotos.length]);
 
   const getYoutubeId = (url?: string) => {
     if (!url) return null;
@@ -21,6 +42,9 @@ export default function GaleriaDetalhes({ galeria, fotos }: Props) {
   };
 
   const youtubeId = getYoutubeId(galeria.video_url);
+
+  // Fotos visiveis (lazy loaded)
+  const visibleFotos = fotos.slice(0, visibleCount);
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -101,35 +125,51 @@ export default function GaleriaDetalhes({ galeria, fotos }: Props) {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {fotos.map((foto, index) => (
-                <motion.div
-                  key={foto.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.05 }}
-                  className="relative aspect-[4/3] cursor-pointer group overflow-hidden rounded-lg"
-                  onClick={() => setSelectedImage(index)}
-                >
-                  <Image
-                    src={foto.foto_url}
-                    alt={foto.legenda || `Foto ${index + 1}`}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
-                    <svg 
-                      className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                    </svg>
-                  </div>
-                </motion.div>
-              ))}
+              {visibleFotos.map((foto, index) => {
+                const blurUrl = getImageBlurUrl(foto.foto_url);
+                
+                return (
+                  <motion.div
+                    key={foto.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: Math.min(index * 0.05, 0.5) }}
+                    className="relative aspect-[4/3] cursor-pointer group overflow-hidden rounded-lg"
+                    onClick={() => setSelectedImage(index)}
+                  >
+                    <Image
+                      src={foto.foto_url}
+                      alt={foto.legenda || `Foto ${index + 1}`}
+                      fill
+                      priority={index < 6}
+                      placeholder={blurUrl ? 'blur' : 'empty'}
+                      blurDataURL={blurUrl || undefined}
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+                      <svg 
+                        className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                      </svg>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
+
+            {/* Trigger para carregar mais fotos */}
+            {visibleCount < fotos.length && (
+              <div ref={loadMoreRef} className="h-20 flex items-center justify-center mt-8">
+                <span className="text-gray-500 text-sm">
+                  Carregando mais fotos... ({visibleCount}/{fotos.length})
+                </span>
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -209,4 +249,3 @@ export default function GaleriaDetalhes({ galeria, fotos }: Props) {
     </main>
   );
 }
-

@@ -33,6 +33,7 @@ export default function Logo({ size = 'md', className = '' }: LogoProps) {
         alt="Logo"
         width={height * 2.5}
         height={height}
+        priority
         className={`object-contain ${className}`}
         style={{ height, width: 'auto', maxWidth: height * 3 }}
       />
@@ -102,6 +103,7 @@ export function LogoText({ size = 'md', className = '' }: LogoProps) {
         alt="Logo"
         width={height * 2.5}
         height={height}
+        priority
         className={`object-contain ${className}`}
         style={{ height, width: 'auto', maxWidth: height * 3 }}
       />
