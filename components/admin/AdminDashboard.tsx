@@ -27,6 +27,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const [loading, setLoading] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [followUpCount, setFollowUpCount] = useState(0);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Fecha dropdown ao clicar fora
@@ -39,6 +40,26 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Buscar contagem de follow-ups pendentes
+  useEffect(() => {
+    const fetchFollowUps = async () => {
+      try {
+        const res = await fetch('/api/admin/leads');
+        if (res.ok) {
+          const data = await res.json();
+          setFollowUpCount(data.metricas?.followUpsPendentes || 0);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar follow-ups:', error);
+      }
+    };
+    
+    fetchFollowUps();
+    // Atualizar a cada 5 minutos
+    const interval = setInterval(fetchFollowUps, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {
@@ -121,6 +142,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           isAdmin={user.role === 'admin'}
           onLogout={handleLogout}
           onChangePassword={() => setShowChangePassword(true)}
+          followUpCount={followUpCount}
         />
 
         {/* Modal Alterar Senha (Mobile) */}

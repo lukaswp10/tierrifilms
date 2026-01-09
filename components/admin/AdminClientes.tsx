@@ -1,16 +1,28 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Lead } from '@/lib/supabase';
+import { Lead, LeadInteracao } from '@/lib/supabase';
 import { useMediaQuery } from '@/lib/useMediaQuery';
+import KanbanBoard from './KanbanBoard';
 import { 
   Search, X, MessageCircle, Trash2, ChevronDown, 
   Clock, CheckCircle2, XCircle, UserCheck, Mail, Phone, Building2, FileText,
   TrendingUp, DollarSign, Calendar, AlertCircle, Filter, BarChart3,
-  MapPin, Tag, Star, Bell, Send, ExternalLink
+  MapPin, Tag, Star, Bell, Send, ExternalLink, Download, Plus,
+  PhoneCall, Video, StickyNote, History, LayoutList, Columns, Settings2, Edit2
 } from 'lucide-react';
 
+interface WhatsAppTemplate {
+  id: string;
+  nome: string;
+  mensagem: string;
+  ordem: number;
+}
+
 type StatusFilter = 'todos' | 'novo' | 'contatado' | 'proposta' | 'negociando' | 'fechado' | 'perdido';
+type ViewMode = 'lista' | 'kanban';
+type ModalTab = 'detalhes' | 'timeline';
+type InteracaoTipo = 'whatsapp' | 'email' | 'ligacao' | 'reuniao' | 'nota';
 
 interface StatusCounts {
   todos: number;
@@ -40,11 +52,11 @@ const statusConfig = {
 };
 
 const tipoServicoConfig = {
-  casamento: { label: 'Casamento', emoji: '??' },
-  evento: { label: 'Evento', emoji: '??' },
-  corporativo: { label: 'Corporativo', emoji: '??' },
-  clip: { label: 'Clip Musical', emoji: '??' },
-  outro: { label: 'Outro', emoji: '??' },
+  casamento: { label: 'Casamento', emoji: '' },
+  evento: { label: 'Evento', emoji: '' },
+  corporativo: { label: 'Corporativo', emoji: '' },
+  clip: { label: 'Clip Musical', emoji: '' },
+  outro: { label: 'Outro', emoji: '' },
 };
 
 const origemConfig = {
@@ -61,23 +73,18 @@ const prioridadeConfig = {
   baixa: { label: 'Baixa', color: 'text-gray-400', bg: 'bg-gray-500/20' },
 };
 
-const whatsappTemplates = [
-  {
-    nome: 'Primeiro contato',
-    mensagem: 'Ola {nome}! Tudo bem?\n\nVi que voce entrou em contato conosco pelo site TIERRIFILMS.\n\nComo posso ajudar?'
-  },
-  {
-    nome: 'Agendar reuniao',
-    mensagem: 'Ola {nome}!\n\nGostaria de agendar uma reuniao para conversarmos sobre seu projeto.\n\nQual seria o melhor dia e horario para voce?'
-  },
-  {
-    nome: 'Enviar proposta',
-    mensagem: 'Ola {nome}!\n\nSegue em anexo a proposta para o seu projeto.\n\nFique a vontade para entrar em contato caso tenha alguma duvida!'
-  },
-  {
-    nome: 'Follow-up',
-    mensagem: 'Ola {nome}!\n\nTudo bem? Passando para saber se voce teve a oportunidade de analisar nossa proposta.\n\nEstou a disposicao para esclarecer qualquer duvida!'
-  },
+const interacaoConfig: Record<InteracaoTipo, { label: string; icon: typeof MessageCircle; color: string }> = {
+  whatsapp: { label: 'WhatsApp', icon: MessageCircle, color: 'text-green-400 bg-green-500/20' },
+  email: { label: 'Email', icon: Mail, color: 'text-blue-400 bg-blue-500/20' },
+  ligacao: { label: 'Ligacao', icon: PhoneCall, color: 'text-amber-400 bg-amber-500/20' },
+  reuniao: { label: 'Reuniao', icon: Video, color: 'text-purple-400 bg-purple-500/20' },
+  nota: { label: 'Nota', icon: StickyNote, color: 'text-gray-400 bg-gray-500/20' },
+};
+
+// Templates padrao de fallback
+const defaultTemplates: Array<{ id?: string; nome: string; mensagem: string }> = [
+  { nome: 'Primeiro contato', mensagem: 'Ola {nome}! Tudo bem?\n\nVi que voce entrou em contato conosco pelo site TIERRIFILMS.\n\nComo posso ajudar?' },
+  { nome: 'Follow-up', mensagem: 'Ola {nome}!\n\nTudo bem? Passando para saber se voce teve a oportunidade de analisar nossa proposta.\n\nEstou a disposicao para esclarecer qualquer duvida!' },
 ];
 
 export default function AdminClientes() {
@@ -92,6 +99,24 @@ export default function AdminClientes() {
   const [saving, setSaving] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  
+  // Timeline
+  const [modalTab, setModalTab] = useState<ModalTab>('detalhes');
+  const [interacoes, setInteracoes] = useState<LeadInteracao[]>([]);
+  const [loadingInteracoes, setLoadingInteracoes] = useState(false);
+  const [showAddInteracao, setShowAddInteracao] = useState(false);
+  const [novaInteracaoTipo, setNovaInteracaoTipo] = useState<InteracaoTipo>('nota');
+  const [novaInteracaoDescricao, setNovaInteracaoDescricao] = useState('');
+  
+  // Visualizacao
+  const [viewMode, setViewMode] = useState<ViewMode>('lista');
+  
+  // Templates WhatsApp
+  const [whatsappTemplates, setWhatsappTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null);
+  const [templateNome, setTemplateNome] = useState('');
+  const [templateMensagem, setTemplateMensagem] = useState('');
   
   // Filtros avancados
   const [filtroTipo, setFiltroTipo] = useState('todos');
@@ -120,9 +145,89 @@ export default function AdminClientes() {
     setLoading(false);
   }, [statusFilter, busca, filtroTipo, filtroPrioridade, filtroOrigem]);
 
+  // Carregar templates do banco
+  const loadTemplates = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/templates');
+      if (res.ok) {
+        const data = await res.json();
+        setWhatsappTemplates(data.templates || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar templates:', error);
+    }
+  }, []);
+
   useEffect(() => {
     loadLeads();
-  }, [loadLeads]);
+    loadTemplates();
+  }, [loadLeads, loadTemplates]);
+
+  // Salvar template (criar ou atualizar)
+  const handleSaveTemplate = async () => {
+    if (!templateNome || !templateMensagem) return;
+    
+    try {
+      const method = editingTemplate ? 'PUT' : 'POST';
+      const body = editingTemplate 
+        ? { id: editingTemplate.id, nome: templateNome, mensagem: templateMensagem }
+        : { nome: templateNome, mensagem: templateMensagem };
+      
+      const res = await fetch('/api/admin/templates', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        await loadTemplates();
+        setEditingTemplate(null);
+        setTemplateNome('');
+        setTemplateMensagem('');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar template:', error);
+    }
+  };
+
+  // Deletar template
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('Excluir este template?')) return;
+    
+    try {
+      const res = await fetch(`/api/admin/templates?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        await loadTemplates();
+      }
+    } catch (error) {
+      console.error('Erro ao deletar template:', error);
+    }
+  };
+
+  // Carregar interacoes quando selecionar um lead
+  const loadInteracoes = useCallback(async (leadId: string) => {
+    setLoadingInteracoes(true);
+    try {
+      const res = await fetch(`/api/admin/leads/interacoes?lead_id=${leadId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInteracoes(data.interacoes || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar interacoes:', error);
+    }
+    setLoadingInteracoes(false);
+  }, []);
+
+  // Quando selecionar um lead, carregar interacoes
+  useEffect(() => {
+    if (selectedLead) {
+      loadInteracoes(selectedLead.id);
+      setModalTab('detalhes');
+    } else {
+      setInteracoes([]);
+    }
+  }, [selectedLead, loadInteracoes]);
 
   const handleUpdateLead = async (leadId: string, updates: Partial<Lead>) => {
     setSaving(true);
@@ -160,20 +265,91 @@ export default function AdminClientes() {
     }
   };
 
-  const openWhatsApp = (lead: Lead, template?: string) => {
+  // Adicionar interacao
+  const handleAddInteracao = async (tipo: InteracaoTipo, descricao?: string) => {
+    if (!selectedLead) return;
+    
+    try {
+      const res = await fetch('/api/admin/leads/interacoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: selectedLead.id,
+          tipo,
+          descricao,
+        }),
+      });
+
+      if (res.ok) {
+        await loadInteracoes(selectedLead.id);
+        setShowAddInteracao(false);
+        setNovaInteracaoDescricao('');
+      }
+    } catch (error) {
+      console.error('Erro ao adicionar interacao:', error);
+    }
+  };
+
+  const openWhatsApp = (lead: Lead, template?: string, templateName?: string) => {
     const whatsappNumber = lead.telefone?.replace(/\D/g, '') || '';
     if (!whatsappNumber) {
       alert('Este lead nao possui telefone cadastrado');
       return;
     }
 
-    const mensagem = template 
-      ? template.replace('{nome}', lead.nome.split(' ')[0])
-      : `Ola ${lead.nome.split(' ')[0]}! Tudo bem?\n\nVi que voce entrou em contato conosco pelo site TIERRIFILMS.\n\nComo posso ajudar?`;
+    // Substituir variaveis dinamicas
+    let mensagem = template || `Ola ${lead.nome.split(' ')[0]}! Tudo bem?\n\nVi que voce entrou em contato conosco pelo site TIERRIFILMS.\n\nComo posso ajudar?`;
+    mensagem = mensagem
+      .replace(/{nome}/g, lead.nome.split(' ')[0])
+      .replace(/{empresa}/g, lead.empresa || '')
+      .replace(/{data_evento}/g, lead.data_evento ? formatDateSimple(lead.data_evento) : '');
     
     const url = `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(mensagem)}`;
     window.open(url, '_blank');
     setShowTemplates(false);
+    
+    // Registrar interacao automaticamente
+    handleAddInteracao('whatsapp', `Mensagem enviada: ${templateName || 'Padrao'}`);
+  };
+
+  // Exportar CSV
+  const handleExportCSV = () => {
+    const headers = [
+      'Nome', 'Email', 'Telefone', 'Empresa', 'Projeto', 'Status',
+      'Tipo Servico', 'Data Evento', 'Local Evento', 'Orcamento',
+      'Origem', 'Prioridade', 'Proximo Contato', 'Notas', 'Criado em'
+    ];
+    
+    const rows = leads.map(lead => [
+      lead.nome,
+      lead.email,
+      lead.telefone || '',
+      lead.empresa || '',
+      lead.projeto.replace(/\n/g, ' '),
+      lead.status,
+      lead.tipo_servico || '',
+      lead.data_evento || '',
+      lead.local_evento || '',
+      lead.orcamento_estimado?.toString() || '',
+      lead.origem || '',
+      lead.prioridade || '',
+      lead.proximo_contato || '',
+      (lead.notas || '').replace(/\n/g, ' '),
+      lead.created_at
+    ]);
+    
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(';'))
+    ].join('\n');
+    
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `leads-tierrifilms-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const formatDate = (dateString: string) => {
@@ -200,6 +376,25 @@ export default function AdminClientes() {
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
+  const formatTimelineDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const hoje = new Date();
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
+    
+    if (date.toDateString() === hoje.toDateString()) {
+      return `Hoje, ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (date.toDateString() === ontem.toDateString()) {
+      return `Ontem, ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return date.toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   // Verifica se tem follow-up pendente
   const hasFollowUpPending = (lead: Lead) => {
     if (!lead.proximo_contato) return false;
@@ -224,9 +419,43 @@ export default function AdminClientes() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold">CRM - Gestao de Leads</h2>
-        <p className="text-gray-400 text-sm mt-1">Pipeline de vendas e acompanhamento de clientes</p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold">CRM - Gestao de Leads</h2>
+          <p className="text-gray-400 text-sm mt-1">Pipeline de vendas e acompanhamento de clientes</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Toggle Lista/Kanban */}
+          {!isMobile && (
+            <div className="flex bg-gray-800 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('lista')}
+                className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
+                  viewMode === 'lista' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <LayoutList className="w-4 h-4" />
+                Lista
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-colors ${
+                  viewMode === 'kanban' ? 'bg-white text-black' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <Columns className="w-4 h-4" />
+                Kanban
+              </button>
+            </div>
+          )}
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm"
+          >
+            <Download className="w-4 h-4" />
+            {!isMobile && 'Exportar CSV'}
+          </button>
+        </div>
       </div>
 
       {/* Dashboard de Metricas */}
@@ -431,17 +660,30 @@ export default function AdminClientes() {
         </div>
       )}
 
+      {/* Kanban View */}
+      {viewMode === 'kanban' && !isMobile && (
+        <KanbanBoard
+          leads={leads}
+          onUpdateStatus={(leadId, newStatus) => handleUpdateLead(leadId, { status: newStatus })}
+          onSelectLead={setSelectedLead}
+          formatCurrency={formatCurrency}
+          formatDateSimple={formatDateSimple}
+        />
+      )}
+
       {/* Lista de Leads */}
-      {leads.length === 0 ? (
-        <div className="text-center py-12 bg-gray-800/30 rounded-xl">
-          <MessageCircle className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-          <p className="text-gray-500">Nenhum lead encontrado</p>
-          <p className="text-gray-600 text-sm mt-1">
-            {statusFilter !== 'todos' ? 'Tente outro filtro' : 'Aguardando contatos do site'}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
+      {(viewMode === 'lista' || isMobile) && (
+        <>
+          {leads.length === 0 ? (
+            <div className="text-center py-12 bg-gray-800/30 rounded-xl">
+              <MessageCircle className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-500">Nenhum lead encontrado</p>
+              <p className="text-gray-600 text-sm mt-1">
+                {statusFilter !== 'todos' ? 'Tente outro filtro' : 'Aguardando contatos do site'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
           {leads.map((lead) => {
             const config = statusConfig[lead.status];
             const StatusIcon = config.icon;
@@ -489,7 +731,7 @@ export default function AdminClientes() {
                       )}
                       {tipoConfig && (
                         <span className="text-xs text-gray-500">
-                          {tipoConfig.emoji} {tipoConfig.label}
+                          {tipoConfig.label}
                         </span>
                       )}
                       {lead.data_evento && (
@@ -530,6 +772,8 @@ export default function AdminClientes() {
             );
           })}
         </div>
+          )}
+        </>
       )}
 
       {/* Modal de Detalhes */}
@@ -547,222 +791,356 @@ export default function AdminClientes() {
               </button>
             </div>
 
+            {/* Abas */}
+            <div className="flex border-b border-gray-800">
+              <button
+                onClick={() => setModalTab('detalhes')}
+                className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
+                  modalTab === 'detalhes' ? 'text-white border-b-2 border-white' : 'text-gray-400'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Detalhes
+              </button>
+              <button
+                onClick={() => setModalTab('timeline')}
+                className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
+                  modalTab === 'timeline' ? 'text-white border-b-2 border-white' : 'text-gray-400'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                Timeline
+                {interacoes.length > 0 && (
+                  <span className="px-1.5 py-0.5 text-xs bg-gray-700 rounded">{interacoes.length}</span>
+                )}
+              </button>
+            </div>
+
             {/* Conteudo Scrollavel */}
             <div className="flex-1 overflow-y-auto p-6">
-              {/* Info do Lead */}
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl">
-                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white font-medium text-lg">
-                    {selectedLead.nome.charAt(0).toUpperCase()}
+              {modalTab === 'detalhes' ? (
+                /* ========== ABA DETALHES ========== */
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-xl">
+                    <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center text-white font-medium text-lg">
+                      {selectedLead.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{selectedLead.nome}</p>
+                      <p className="text-sm text-gray-500">{formatDate(selectedLead.created_at)}</p>
+                    </div>
+                    {selectedLead.prioridade && (
+                      <span className={`px-3 py-1 text-sm font-medium rounded-full ${prioridadeConfig[selectedLead.prioridade].bg} ${prioridadeConfig[selectedLead.prioridade].color}`}>
+                        {prioridadeConfig[selectedLead.prioridade].label}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{selectedLead.nome}</p>
-                    <p className="text-sm text-gray-500">{formatDate(selectedLead.created_at)}</p>
-                  </div>
-                  {selectedLead.prioridade && (
-                    <span className={`px-3 py-1 text-sm font-medium rounded-full ${prioridadeConfig[selectedLead.prioridade].bg} ${prioridadeConfig[selectedLead.prioridade].color}`}>
-                      {prioridadeConfig[selectedLead.prioridade].label}
-                    </span>
-                  )}
-                </div>
 
-                {/* Contatos */}
-                <div className="grid gap-3">
-                  <div className="flex items-center gap-3 text-sm">
-                    <Mail className="w-4 h-4 text-gray-500" />
-                    <a href={`mailto:${selectedLead.email}`} className="text-gray-300 hover:text-white flex items-center gap-1">
-                      {selectedLead.email}
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                  {selectedLead.telefone && (
+                  {/* Contatos */}
+                  <div className="grid gap-3">
                     <div className="flex items-center gap-3 text-sm">
-                      <Phone className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-300">{selectedLead.telefone}</span>
+                      <Mail className="w-4 h-4 text-gray-500" />
+                      <a href={`mailto:${selectedLead.email}`} className="text-gray-300 hover:text-white flex items-center gap-1">
+                        {selectedLead.email}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    {selectedLead.telefone && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <Phone className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-300">{selectedLead.telefone}</span>
+                      </div>
+                    )}
+                    {selectedLead.empresa && (
+                      <div className="flex items-center gap-3 text-sm">
+                        <Building2 className="w-4 h-4 text-gray-500" />
+                        <span className="text-gray-300">{selectedLead.empresa}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Projeto */}
+                  <div>
+                    <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
+                      <FileText className="w-4 h-4" />
+                      Sobre o projeto
+                    </div>
+                    <p className="text-sm text-gray-300 bg-gray-800/50 p-3 rounded-xl whitespace-pre-wrap">
+                      {selectedLead.projeto}
+                    </p>
+                  </div>
+
+                  {/* Grid de campos do CRM */}
+                  <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                    {/* Status */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Status</label>
+                      <div className="relative">
+                        <select
+                          value={selectedLead.status}
+                          onChange={(e) => handleUpdateLead(selectedLead.id, { status: e.target.value as Lead['status'] })}
+                          disabled={saving}
+                          className={selectClass}
+                        >
+                          <option value="novo">Novo</option>
+                          <option value="contatado">Contatado</option>
+                          <option value="proposta">Proposta Enviada</option>
+                          <option value="negociando">Negociando</option>
+                          <option value="fechado">Fechado</option>
+                          <option value="perdido">Perdido</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Tipo de Servico */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        <Tag className="w-4 h-4 inline mr-1" />
+                        Tipo de Servico
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={selectedLead.tipo_servico || ''}
+                          onChange={(e) => handleUpdateLead(selectedLead.id, { tipo_servico: e.target.value as Lead['tipo_servico'] })}
+                          disabled={saving}
+                          className={selectClass}
+                        >
+                          <option value="">Selecionar...</option>
+                          <option value="casamento">Casamento</option>
+                          <option value="evento">Evento</option>
+                          <option value="corporativo">Corporativo</option>
+                          <option value="clip">Clip Musical</option>
+                          <option value="outro">Outro</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Data do Evento */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        <Calendar className="w-4 h-4 inline mr-1" />
+                        Data do Evento
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedLead.data_evento || ''}
+                        onChange={(e) => handleUpdateLead(selectedLead.id, { data_evento: e.target.value })}
+                        disabled={saving}
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Local do Evento */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        <MapPin className="w-4 h-4 inline mr-1" />
+                        Local do Evento
+                      </label>
+                      <input
+                        type="text"
+                        value={selectedLead.local_evento || ''}
+                        onChange={(e) => handleUpdateLead(selectedLead.id, { local_evento: e.target.value })}
+                        disabled={saving}
+                        placeholder="Cidade / Local"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Orcamento */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        <DollarSign className="w-4 h-4 inline mr-1" />
+                        Orcamento Estimado
+                      </label>
+                      <input
+                        type="number"
+                        value={selectedLead.orcamento_estimado || ''}
+                        onChange={(e) => handleUpdateLead(selectedLead.id, { orcamento_estimado: Number(e.target.value) || undefined })}
+                        disabled={saving}
+                        placeholder="R$ 0,00"
+                        className={inputClass}
+                      />
+                    </div>
+
+                    {/* Prioridade */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        <Star className="w-4 h-4 inline mr-1" />
+                        Prioridade
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={selectedLead.prioridade || 'media'}
+                          onChange={(e) => handleUpdateLead(selectedLead.id, { prioridade: e.target.value as Lead['prioridade'] })}
+                          disabled={saving}
+                          className={selectClass}
+                        >
+                          <option value="alta">Alta</option>
+                          <option value="media">Media</option>
+                          <option value="baixa">Baixa</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Origem */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">Origem</label>
+                      <div className="relative">
+                        <select
+                          value={selectedLead.origem || 'site'}
+                          onChange={(e) => handleUpdateLead(selectedLead.id, { origem: e.target.value as Lead['origem'] })}
+                          disabled={saving}
+                          className={selectClass}
+                        >
+                          <option value="site">Site</option>
+                          <option value="instagram">Instagram</option>
+                          <option value="google">Google</option>
+                          <option value="indicacao">Indicacao</option>
+                          <option value="outro">Outro</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Proximo Contato */}
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        <Bell className="w-4 h-4 inline mr-1" />
+                        Proximo Follow-up
+                      </label>
+                      <input
+                        type="date"
+                        value={selectedLead.proximo_contato?.split('T')[0] || ''}
+                        onChange={(e) => handleUpdateLead(selectedLead.id, { proximo_contato: e.target.value })}
+                        disabled={saving}
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notas */}
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2">Notas internas</label>
+                    <textarea
+                      defaultValue={selectedLead.notas || ''}
+                      onBlur={(e) => handleUpdateLead(selectedLead.id, { notas: e.target.value })}
+                      placeholder="Adicione notas sobre este lead..."
+                      className={`${inputClass} resize-none`}
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* ========== ABA TIMELINE ========== */
+                <div className="space-y-4">
+                  {/* Botao Adicionar Interacao */}
+                  <button
+                    onClick={() => setShowAddInteracao(!showAddInteracao)}
+                    className="w-full py-3 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Registrar Interacao
+                  </button>
+
+                  {/* Form Adicionar Interacao */}
+                  {showAddInteracao && (
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4 space-y-4">
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Tipo de Interacao</label>
+                        <div className="grid grid-cols-5 gap-2">
+                          {(Object.keys(interacaoConfig) as InteracaoTipo[]).map((tipo) => {
+                            const config = interacaoConfig[tipo];
+                            const Icon = config.icon;
+                            return (
+                              <button
+                                key={tipo}
+                                onClick={() => setNovaInteracaoTipo(tipo)}
+                                className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-colors ${
+                                  novaInteracaoTipo === tipo
+                                    ? 'bg-white text-black'
+                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                                }`}
+                              >
+                                <Icon className="w-5 h-5" />
+                                <span className="text-xs">{config.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Descricao (opcional)</label>
+                        <textarea
+                          value={novaInteracaoDescricao}
+                          onChange={(e) => setNovaInteracaoDescricao(e.target.value)}
+                          placeholder="O que foi conversado..."
+                          className={`${inputClass} resize-none`}
+                          rows={2}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleAddInteracao(novaInteracaoTipo, novaInteracaoDescricao)}
+                          className="flex-1 py-2 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                        >
+                          Salvar
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddInteracao(false);
+                            setNovaInteracaoDescricao('');
+                          }}
+                          className="px-4 py-2 bg-gray-800 text-gray-400 rounded-xl hover:bg-gray-700 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
                     </div>
                   )}
-                  {selectedLead.empresa && (
-                    <div className="flex items-center gap-3 text-sm">
-                      <Building2 className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-300">{selectedLead.empresa}</span>
+
+                  {/* Lista de Interacoes */}
+                  {loadingInteracoes ? (
+                    <div className="text-center py-8 text-gray-500">Carregando...</div>
+                  ) : interacoes.length === 0 ? (
+                    <div className="text-center py-12 bg-gray-800/30 rounded-xl">
+                      <History className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+                      <p className="text-gray-500">Nenhuma interacao registrada</p>
+                      <p className="text-gray-600 text-sm mt-1">
+                        Registre contatos para acompanhar o historico
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {interacoes.map((interacao) => {
+                        const config = interacaoConfig[interacao.tipo as InteracaoTipo];
+                        const Icon = config?.icon || StickyNote;
+                        return (
+                          <div
+                            key={interacao.id}
+                            className="flex gap-3 p-3 bg-gray-800/30 rounded-xl"
+                          >
+                            <div className={`p-2 rounded-lg ${config?.color || 'bg-gray-500/20 text-gray-400'}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">{config?.label || interacao.tipo}</span>
+                                <span className="text-xs text-gray-500">{formatTimelineDate(interacao.created_at)}</span>
+                              </div>
+                              {interacao.descricao && (
+                                <p className="text-sm text-gray-400 mt-1">{interacao.descricao}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-
-                {/* Projeto */}
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-400 mb-2">
-                    <FileText className="w-4 h-4" />
-                    Sobre o projeto
-                  </div>
-                  <p className="text-sm text-gray-300 bg-gray-800/50 p-3 rounded-xl whitespace-pre-wrap">
-                    {selectedLead.projeto}
-                  </p>
-                </div>
-
-                {/* Grid de campos do CRM */}
-                <div className={`grid gap-4 ${isMobile ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                  {/* Status */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">Status</label>
-                    <div className="relative">
-                      <select
-                        value={selectedLead.status}
-                        onChange={(e) => handleUpdateLead(selectedLead.id, { status: e.target.value as Lead['status'] })}
-                        disabled={saving}
-                        className={selectClass}
-                      >
-                        <option value="novo">Novo</option>
-                        <option value="contatado">Contatado</option>
-                        <option value="proposta">Proposta Enviada</option>
-                        <option value="negociando">Negociando</option>
-                        <option value="fechado">Fechado</option>
-                        <option value="perdido">Perdido</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Tipo de Servico */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      <Tag className="w-4 h-4 inline mr-1" />
-                      Tipo de Servico
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={selectedLead.tipo_servico || ''}
-                        onChange={(e) => handleUpdateLead(selectedLead.id, { tipo_servico: e.target.value as Lead['tipo_servico'] })}
-                        disabled={saving}
-                        className={selectClass}
-                      >
-                        <option value="">Selecionar...</option>
-                        <option value="casamento">Casamento</option>
-                        <option value="evento">Evento</option>
-                        <option value="corporativo">Corporativo</option>
-                        <option value="clip">Clip Musical</option>
-                        <option value="outro">Outro</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Data do Evento */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      <Calendar className="w-4 h-4 inline mr-1" />
-                      Data do Evento
-                    </label>
-                    <input
-                      type="date"
-                      value={selectedLead.data_evento || ''}
-                      onChange={(e) => handleUpdateLead(selectedLead.id, { data_evento: e.target.value })}
-                      disabled={saving}
-                      className={inputClass}
-                    />
-                  </div>
-
-                  {/* Local do Evento */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      <MapPin className="w-4 h-4 inline mr-1" />
-                      Local do Evento
-                    </label>
-                    <input
-                      type="text"
-                      value={selectedLead.local_evento || ''}
-                      onChange={(e) => handleUpdateLead(selectedLead.id, { local_evento: e.target.value })}
-                      disabled={saving}
-                      placeholder="Cidade / Local"
-                      className={inputClass}
-                    />
-                  </div>
-
-                  {/* Orcamento */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      <DollarSign className="w-4 h-4 inline mr-1" />
-                      Orcamento Estimado
-                    </label>
-                    <input
-                      type="number"
-                      value={selectedLead.orcamento_estimado || ''}
-                      onChange={(e) => handleUpdateLead(selectedLead.id, { orcamento_estimado: Number(e.target.value) || undefined })}
-                      disabled={saving}
-                      placeholder="R$ 0,00"
-                      className={inputClass}
-                    />
-                  </div>
-
-                  {/* Prioridade */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      <Star className="w-4 h-4 inline mr-1" />
-                      Prioridade
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={selectedLead.prioridade || 'media'}
-                        onChange={(e) => handleUpdateLead(selectedLead.id, { prioridade: e.target.value as Lead['prioridade'] })}
-                        disabled={saving}
-                        className={selectClass}
-                      >
-                        <option value="alta">Alta</option>
-                        <option value="media">Media</option>
-                        <option value="baixa">Baixa</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Origem */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">Origem</label>
-                    <div className="relative">
-                      <select
-                        value={selectedLead.origem || 'site'}
-                        onChange={(e) => handleUpdateLead(selectedLead.id, { origem: e.target.value as Lead['origem'] })}
-                        disabled={saving}
-                        className={selectClass}
-                      >
-                        <option value="site">Site</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="google">Google</option>
-                        <option value="indicacao">Indicacao</option>
-                        <option value="outro">Outro</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  {/* Proximo Contato */}
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-2">
-                      <Bell className="w-4 h-4 inline mr-1" />
-                      Proximo Follow-up
-                    </label>
-                    <input
-                      type="date"
-                      value={selectedLead.proximo_contato?.split('T')[0] || ''}
-                      onChange={(e) => handleUpdateLead(selectedLead.id, { proximo_contato: e.target.value })}
-                      disabled={saving}
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-
-                {/* Notas */}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Notas internas</label>
-                  <textarea
-                    defaultValue={selectedLead.notas || ''}
-                    onBlur={(e) => handleUpdateLead(selectedLead.id, { notas: e.target.value })}
-                    placeholder="Adicione notas sobre este lead..."
-                    className={`${inputClass} resize-none`}
-                    rows={3}
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Footer com Acoes */}
@@ -781,14 +1159,25 @@ export default function AdminClientes() {
                     
                     {/* Menu de Templates */}
                     {showTemplates && (
-                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-xl">
-                        <div className="p-2 border-b border-gray-700">
+                      <div className="absolute bottom-full left-0 right-0 mb-2 bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-xl max-h-64 overflow-y-auto">
+                        <div className="p-2 border-b border-gray-700 flex items-center justify-between">
                           <p className="text-xs text-gray-400 px-2">Escolha uma mensagem:</p>
-                        </div>
-                        {whatsappTemplates.map((template, i) => (
                           <button
-                            key={i}
-                            onClick={() => openWhatsApp(selectedLead, template.mensagem)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowTemplates(false);
+                              setShowTemplatesModal(true);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                            title="Gerenciar templates"
+                          >
+                            <Settings2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {(whatsappTemplates.length > 0 ? whatsappTemplates : defaultTemplates).map((template, i) => (
+                          <button
+                            key={'id' in template ? template.id : i}
+                            onClick={() => openWhatsApp(selectedLead, template.mensagem, template.nome)}
                             className="w-full px-4 py-3 text-left hover:bg-gray-700 transition-colors flex items-center gap-3"
                           >
                             <Send className="w-4 h-4 text-green-400" />
@@ -808,6 +1197,7 @@ export default function AdminClientes() {
                 )}
                 <a
                   href={`mailto:${selectedLead.email}`}
+                  onClick={() => handleAddInteracao('email', 'Email enviado')}
                   className="px-4 py-3 bg-gray-800 text-blue-400 rounded-xl hover:bg-blue-500/20 transition-colors flex items-center gap-2"
                 >
                   <Mail className="w-4 h-4" />
@@ -819,6 +1209,126 @@ export default function AdminClientes() {
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gerenciar Templates */}
+      {showTemplatesModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 w-full max-w-lg rounded-2xl flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+              <h3 className="text-lg font-semibold">Gerenciar Templates WhatsApp</h3>
+              <button
+                onClick={() => {
+                  setShowTemplatesModal(false);
+                  setEditingTemplate(null);
+                  setTemplateNome('');
+                  setTemplateMensagem('');
+                }}
+                className="p-2 text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Form */}
+              <div className="bg-gray-800/50 rounded-xl p-4 space-y-4">
+                <h4 className="text-sm font-medium text-gray-300">
+                  {editingTemplate ? 'Editar Template' : 'Novo Template'}
+                </h4>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Nome</label>
+                  <input
+                    type="text"
+                    value={templateNome}
+                    onChange={(e) => setTemplateNome(e.target.value)}
+                    placeholder="Ex: Primeiro contato"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">
+                    Mensagem
+                    <span className="text-xs text-gray-500 ml-2">
+                      Variaveis: {'{nome}'}, {'{empresa}'}, {'{data_evento}'}
+                    </span>
+                  </label>
+                  <textarea
+                    value={templateMensagem}
+                    onChange={(e) => setTemplateMensagem(e.target.value)}
+                    placeholder="Digite a mensagem..."
+                    className={`${inputClass} resize-none`}
+                    rows={4}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveTemplate}
+                    disabled={!templateNome || !templateMensagem}
+                    className="flex-1 py-2 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    {editingTemplate ? 'Atualizar' : 'Criar Template'}
+                  </button>
+                  {editingTemplate && (
+                    <button
+                      onClick={() => {
+                        setEditingTemplate(null);
+                        setTemplateNome('');
+                        setTemplateMensagem('');
+                      }}
+                      className="px-4 py-2 bg-gray-800 text-gray-400 rounded-xl hover:bg-gray-700 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Lista de Templates */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-300">Templates Salvos</h4>
+                {whatsappTemplates.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-800/30 rounded-xl">
+                    <MessageCircle className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">Nenhum template criado</p>
+                  </div>
+                ) : (
+                  whatsappTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="bg-gray-800/50 rounded-xl p-4 flex items-start gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{template.nome}</p>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">{template.mensagem}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => {
+                            setEditingTemplate(template);
+                            setTemplateNome(template.nome);
+                            setTemplateMensagem(template.mensagem);
+                          }}
+                          className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTemplate(template.id)}
+                          className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

@@ -11,9 +11,10 @@ interface BottomNavProps {
   isAdmin: boolean;
   onLogout: () => void;
   onChangePassword?: () => void;
+  followUpCount?: number;
 }
 
-export default function BottomNav({ activeTab, onTabChange, isAdmin, onLogout, onChangePassword }: BottomNavProps) {
+export default function BottomNav({ activeTab, onTabChange, isAdmin, onLogout, onChangePassword, followUpCount = 0 }: BottomNavProps) {
   const [showMore, setShowMore] = useState(false);
 
   const mainTabs = [
@@ -102,16 +103,24 @@ export default function BottomNav({ activeTab, onTabChange, isAdmin, onLogout, o
           {mainTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const showBadge = tab.id === 'clientes' && followUpCount > 0;
             
             return (
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
+                className={`relative flex flex-col items-center justify-center flex-1 h-full transition-colors ${
                   isActive ? 'text-white' : 'text-gray-500'
                 }`}
               >
-                <Icon className={`w-5 h-5 mb-1 ${isActive ? 'stroke-2' : ''}`} />
+                <div className="relative">
+                  <Icon className={`w-5 h-5 mb-1 ${isActive ? 'stroke-2' : ''}`} />
+                  {showBadge && (
+                    <span className="absolute -top-1 -right-2 min-w-[16px] h-4 flex items-center justify-center px-1 bg-amber-500 text-black text-[10px] font-bold rounded-full">
+                      {followUpCount > 9 ? '9+' : followUpCount}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{tab.label}</span>
               </button>
             );

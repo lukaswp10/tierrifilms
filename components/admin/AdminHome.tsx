@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Upload, ChevronDown, Info } from 'lucide-react';
+import { Upload, ChevronDown, Info, Video, Link2, X, Play, Trash2 } from 'lucide-react';
+import { CldUploadWidget } from 'next-cloudinary';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import SaveBar, { SaveButton } from './SaveBar';
 
@@ -33,6 +34,10 @@ export default function AdminHome() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const [activeSection, setActiveSection] = useState<Section>('geral');
+  const [showHeroVideoModal, setShowHeroVideoModal] = useState(false);
+  const [showShowreelVideoModal, setShowShowreelVideoModal] = useState(false);
+  const [videoTab, setVideoTab] = useState<'link' | 'upload'>('link');
+  const [videoInputUrl, setVideoInputUrl] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const showreelImageRef = useRef<HTMLInputElement>(null);
   const heroImageRef = useRef<HTMLInputElement>(null);
@@ -617,13 +622,45 @@ export default function AdminHome() {
             {/* Video de Fundo */}
             <div className="mt-4 bg-gray-800/30 rounded-xl p-4">
               <label className={labelClass}>Video de Fundo <span className="text-amber-400 font-normal">(prioridade)</span></label>
-              <input
-                type="text"
-                value={configs['video_fundo'] || ''}
-                onChange={(e) => handleChange('video_fundo', e.target.value)}
-                placeholder="URL do video (Cloudinary ou similar)"
-                className={inputClass}
-              />
+
+              {/* Preview do video atual */}
+              {configs['video_fundo'] && (
+                <div className="mb-3 relative rounded-xl overflow-hidden bg-gray-900 aspect-video">
+                  <video
+                    src={configs['video_fundo']}
+                    className="w-full h-full object-cover"
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                  />
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <button
+                      onClick={() => handleChange('video_fundo', '')}
+                      className="p-2 bg-red-500/80 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      title="Remover video"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="absolute bottom-2 left-2">
+                    <span className="px-2 py-1 bg-black/60 text-white text-xs rounded">Video de Fundo</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Botao para abrir modal */}
+              <button
+                onClick={() => {
+                  setVideoInputUrl(configs['video_fundo'] || '');
+                  setVideoTab('link');
+                  setShowHeroVideoModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 transition-colors"
+              >
+                <Video className="w-5 h-5" />
+                <span>{configs['video_fundo'] ? 'Trocar Video' : 'Adicionar Video'}</span>
+              </button>
               <Tip text="Formato: MP4, 1920x1080, max 30MB, ideal 10-30 segundos em loop" />
             </div>
           </div>
@@ -735,15 +772,51 @@ export default function AdminHome() {
           </div>
 
           <div>
-            <label className={labelClass}>URL do Video</label>
-            <input
-              type="text"
-              value={configs['showreel_video_url'] || ''}
-              onChange={(e) => handleChange('showreel_video_url', e.target.value)}
-              className={inputClass}
-              placeholder="https://youtube.com/watch?v=... ou https://vimeo.com/..."
-            />
-            <Tip text="Deixe vazio para desabilitar o botao de play" />
+            <label className={labelClass}>Video do Showreel</label>
+
+            {/* Preview do video atual */}
+            {configs['showreel_video_url'] && (
+              <div className="mb-3 relative rounded-xl overflow-hidden bg-gray-900 aspect-video">
+                {configs['showreel_video_url'].includes('youtube.com') || configs['showreel_video_url'].includes('youtu.be') || configs['showreel_video_url'].includes('vimeo.com') ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                    <div className="text-center">
+                      <Play className="w-12 h-12 text-white/50 mx-auto mb-2" />
+                      <p className="text-sm text-gray-400 truncate max-w-xs px-4">{configs['showreel_video_url']}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <video
+                    src={configs['showreel_video_url']}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                  />
+                )}
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <button
+                    onClick={() => handleChange('showreel_video_url', '')}
+                    className="p-2 bg-red-500/80 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    title="Remover video"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Botao para abrir modal */}
+            <button
+              onClick={() => {
+                setVideoInputUrl(configs['showreel_video_url'] || '');
+                setVideoTab('link');
+                setShowShowreelVideoModal(true);
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl hover:bg-gray-700 transition-colors"
+            >
+              <Video className="w-5 h-5" />
+              <span>{configs['showreel_video_url'] ? 'Trocar Video' : 'Adicionar Video'}</span>
+            </button>
+            <Tip text="YouTube, Vimeo ou upload direto. Deixe vazio para desabilitar o botao de play" />
           </div>
         </div>
       )}
@@ -954,6 +1027,208 @@ export default function AdminHome() {
                   placeholder="https://facebook.com/tierrifilms"
                 />
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Video de Fundo (Hero) */}
+      {showHeroVideoModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800">
+              <h3 className="text-lg font-semibold">Video de Fundo</h3>
+              <button
+                onClick={() => setShowHeroVideoModal(false)}
+                className="p-2 text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Abas */}
+            <div className="flex border-b border-gray-800">
+              <button
+                onClick={() => setVideoTab('link')}
+                className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 ${videoTab === 'link' ? 'text-white border-b-2 border-white' : 'text-gray-400'
+                  }`}
+              >
+                <Link2 className="w-4 h-4" />
+                Link / URL
+              </button>
+              <button
+                onClick={() => setVideoTab('upload')}
+                className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 ${videoTab === 'upload' ? 'text-white border-b-2 border-white' : 'text-gray-400'
+                  }`}
+              >
+                <Upload className="w-4 h-4" />
+                Enviar Video
+              </button>
+            </div>
+
+            <div className="p-6 flex-1 overflow-y-auto">
+              {videoTab === 'link' ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-400">
+                    Cole a URL do video (Cloudinary, YouTube, ou link direto MP4).
+                  </p>
+                  <input
+                    type="text"
+                    value={videoInputUrl}
+                    onChange={(e) => setVideoInputUrl(e.target.value)}
+                    placeholder="https://..."
+                    className={inputClass}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      if (videoInputUrl.trim()) {
+                        handleChange('video_fundo', videoInputUrl.trim());
+                        setShowHeroVideoModal(false);
+                        setVideoInputUrl('');
+                      }
+                    }}
+                    disabled={!videoInputUrl.trim()}
+                    className="w-full py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Salvar Video
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-400">
+                    Envie um video diretamente para o Cloudinary.
+                  </p>
+                  <CldUploadWidget
+                    uploadPreset="tierrifilms"
+                    options={{
+                      folder: 'tierrifilms/videos',
+                      resourceType: 'video',
+                      maxFileSize: 104857600,
+                      clientAllowedFormats: ['mp4', 'mov', 'webm']
+                    }}
+                    onSuccess={(result) => {
+                      const r = result as { info?: { secure_url?: string } };
+                      if (r.info?.secure_url) {
+                        handleChange('video_fundo', r.info.secure_url);
+                        setShowHeroVideoModal(false);
+                      }
+                    }}
+                  >
+                    {({ open }) => (
+                      <button
+                        onClick={() => open()}
+                        className="w-full py-8 border-2 border-dashed border-gray-700 rounded-xl hover:border-gray-500 transition-colors flex flex-col items-center justify-center gap-2"
+                      >
+                        <Upload className="w-8 h-8 text-gray-400" />
+                        <span className="text-gray-400">Clique para enviar</span>
+                        <p className="text-xs text-gray-500">MP4, MOV, WEBM (max 100MB)</p>
+                      </button>
+                    )}
+                  </CldUploadWidget>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Video do Showreel */}
+      {showShowreelVideoModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800">
+              <h3 className="text-lg font-semibold">Video do Showreel</h3>
+              <button
+                onClick={() => setShowShowreelVideoModal(false)}
+                className="p-2 text-gray-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Abas */}
+            <div className="flex border-b border-gray-800">
+              <button
+                onClick={() => setVideoTab('link')}
+                className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 ${videoTab === 'link' ? 'text-white border-b-2 border-white' : 'text-gray-400'
+                  }`}
+              >
+                <Link2 className="w-4 h-4" />
+                Link / URL
+              </button>
+              <button
+                onClick={() => setVideoTab('upload')}
+                className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 ${videoTab === 'upload' ? 'text-white border-b-2 border-white' : 'text-gray-400'
+                  }`}
+              >
+                <Upload className="w-4 h-4" />
+                Enviar Video
+              </button>
+            </div>
+
+            <div className="p-6 flex-1 overflow-y-auto">
+              {videoTab === 'link' ? (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-400">
+                    Cole a URL do video (YouTube, Vimeo, ou link direto MP4).
+                  </p>
+                  <input
+                    type="text"
+                    value={videoInputUrl}
+                    onChange={(e) => setVideoInputUrl(e.target.value)}
+                    placeholder="https://youtube.com/watch?v=... ou https://vimeo.com/..."
+                    className={inputClass}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      if (videoInputUrl.trim()) {
+                        handleChange('showreel_video_url', videoInputUrl.trim());
+                        setShowShowreelVideoModal(false);
+                        setVideoInputUrl('');
+                      }
+                    }}
+                    disabled={!videoInputUrl.trim()}
+                    className="w-full py-3 bg-white text-black font-medium rounded-xl hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Salvar Video
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-400">
+                    Envie um video diretamente para o Cloudinary.
+                  </p>
+                  <CldUploadWidget
+                    uploadPreset="tierrifilms"
+                    options={{
+                      folder: 'tierrifilms/videos',
+                      resourceType: 'video',
+                      maxFileSize: 104857600,
+                      clientAllowedFormats: ['mp4', 'mov', 'webm']
+                    }}
+                    onSuccess={(result) => {
+                      const r = result as { info?: { secure_url?: string } };
+                      if (r.info?.secure_url) {
+                        handleChange('showreel_video_url', r.info.secure_url);
+                        setShowShowreelVideoModal(false);
+                      }
+                    }}
+                  >
+                    {({ open }) => (
+                      <button
+                        onClick={() => open()}
+                        className="w-full py-8 border-2 border-dashed border-gray-700 rounded-xl hover:border-gray-500 transition-colors flex flex-col items-center justify-center gap-2"
+                      >
+                        <Upload className="w-8 h-8 text-gray-400" />
+                        <span className="text-gray-400">Clique para enviar</span>
+                        <p className="text-xs text-gray-500">MP4, MOV, WEBM (max 100MB)</p>
+                      </button>
+                    )}
+                  </CldUploadWidget>
+                </div>
+              )}
             </div>
           </div>
         </div>
