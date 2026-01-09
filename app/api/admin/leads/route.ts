@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
-// GET - Listar leads com filtros
+// GET - Listar leads com filtros e metricas
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) {
@@ -13,7 +13,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const busca = searchParams.get('busca');
-    const limite = parseInt(searchParams.get('limite') || '50');
+    const tipo_servico = searchParams.get('tipo_servico');
+    const prioridade = searchParams.get('prioridade');
+    const origem = searchParams.get('origem');
+    const data_evento_inicio = searchParams.get('data_evento_inicio');
+    const data_evento_fim = searchParams.get('data_evento_fim');
+    const limite = parseInt(searchParams.get('limite') || '100');
 
     let query = supabaseAdmin
       .from('leads')
@@ -26,36 +31,104 @@ export async function GET(request: NextRequest) {
       query = query.eq('status', status);
     }
 
-    // Buscar por nome ou email
+    // Buscar por nome, email ou empresa
     if (busca) {
       query = query.or(`nome.ilike.%${busca}%,email.ilike.%${busca}%,empresa.ilike.%${busca}%`);
+    }
+
+    // Filtros avancados
+    if (tipo_servico && tipo_servico !== 'todos') {
+      query = query.eq('tipo_servico', tipo_servico);
+    }
+
+    if (prioridade && prioridade !== 'todos') {
+      query = query.eq('prioridade', prioridade);
+    }
+
+    if (origem && origem !== 'todos') {
+      query = query.eq('origem', origem);
+    }
+
+    if (data_evento_inicio) {
+      query = query.gte('data_evento', data_evento_inicio);
+    }
+
+    if (data_evento_fim) {
+      query = query.lte('data_evento', data_evento_fim);
     }
 
     const { data, error } = await query;
 
     if (error) throw error;
 
-    // Contar por status
-    const { data: counts } = await supabaseAdmin
+    // Buscar todos os leads para calcular metricas
+    const { data: allLeads } = await supabaseAdmin
       .from('leads')
-      .select('status');
+      .select('status, orcamento_estimado, created_at, proximo_contato');
 
+    // Calcular metricas
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    const leadsEsteMes = allLeads?.filter(l => new Date(l.created_at) >= startOfMonth).length || 0;
+    const totalLeads = allLeads?.length || 0;
+    const leadsFechados = allLeads?.filter(l => l.status === 'fechado').length || 0;
+    const taxaConversao = totalLeads > 0 ? Math.round((leadsFechados / totalLeads) * 100) : 0;
+    
+    // Pipeline = soma dos orcamentos de leads em negociacao/proposta
+    const valorPipeline = allLeads
+      ?.filter(l => ['proposta', 'negociando'].includes(l.status))
+      .reduce((acc, l) => acc + (Number(l.orcamento_estimado) || 0), 0) || 0;
+
+    // Follow-ups pendentes (proximo_contato no passado ou hoje)
+    const hoje = new Date().toISOString().split('T')[0];
+    const followUpsPendentes = allLeads?.filter(l => 
+      l.proximo_contato && l.proximo_contato.split('T')[0] <= hoje && 
+      !['fechado', 'perdido'].includes(l.status)
+    ).length || 0;
+
+    // Contar por status
     const statusCounts = {
-      todos: counts?.length || 0,
-      novo: counts?.filter(l => l.status === 'novo').length || 0,
-      contatado: counts?.filter(l => l.status === 'contatado').length || 0,
-      fechado: counts?.filter(l => l.status === 'fechado').length || 0,
-      perdido: counts?.filter(l => l.status === 'perdido').length || 0,
+      todos: allLeads?.length || 0,
+      novo: allLeads?.filter(l => l.status === 'novo').length || 0,
+      contatado: allLeads?.filter(l => l.status === 'contatado').length || 0,
+      proposta: allLeads?.filter(l => l.status === 'proposta').length || 0,
+      negociando: allLeads?.filter(l => l.status === 'negociando').length || 0,
+      fechado: allLeads?.filter(l => l.status === 'fechado').length || 0,
+      perdido: allLeads?.filter(l => l.status === 'perdido').length || 0,
     };
 
-    return NextResponse.json({ leads: data || [], counts: statusCounts });
+    // Leads por mes (ultimos 6 meses)
+    const leadsPorMes: { mes: string; total: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const mesNome = date.toLocaleDateString('pt-BR', { month: 'short' });
+      const total = allLeads?.filter(l => {
+        const d = new Date(l.created_at);
+        return d >= date && d < nextDate;
+      }).length || 0;
+      leadsPorMes.push({ mes: mesNome.replace('.', ''), total });
+    }
+
+    return NextResponse.json({ 
+      leads: data || [], 
+      counts: statusCounts,
+      metricas: {
+        leadsEsteMes,
+        taxaConversao,
+        valorPipeline,
+        followUpsPendentes,
+        leadsPorMes
+      }
+    });
   } catch (error) {
     console.error('Erro ao buscar leads:', error);
     return NextResponse.json({ error: 'Erro ao buscar leads' }, { status: 500 });
   }
 }
 
-// PUT - Atualizar lead (status, notas)
+// PUT - Atualizar lead (todos os campos)
 export async function PUT(request: NextRequest) {
   const session = await getSession();
   if (!session) {
@@ -64,7 +137,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { id, status, notas } = body;
+    const { id, ...fields } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'ID e obrigatorio' }, { status: 400 });
@@ -74,16 +147,31 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString()
     };
 
-    if (status !== undefined) {
-      const validStatus = ['novo', 'contatado', 'fechado', 'perdido'];
-      if (!validStatus.includes(status)) {
+    // Campos permitidos para atualizacao
+    const allowedFields = [
+      'status', 'notas', 'tipo_servico', 'data_evento', 'local_evento',
+      'orcamento_estimado', 'origem', 'prioridade', 'proximo_contato'
+    ];
+
+    // Validar status
+    if (fields.status !== undefined) {
+      const validStatus = ['novo', 'contatado', 'proposta', 'negociando', 'fechado', 'perdido'];
+      if (!validStatus.includes(fields.status)) {
         return NextResponse.json({ error: 'Status invalido' }, { status: 400 });
       }
-      updateData.status = status;
     }
 
-    if (notas !== undefined) {
-      updateData.notas = notas?.substring(0, 2000) || null;
+    // Copiar campos permitidos
+    for (const field of allowedFields) {
+      if (fields[field] !== undefined) {
+        if (field === 'notas') {
+          updateData[field] = fields[field]?.substring(0, 2000) || null;
+        } else if (field === 'orcamento_estimado') {
+          updateData[field] = fields[field] ? Number(fields[field]) : null;
+        } else {
+          updateData[field] = fields[field] || null;
+        }
+      }
     }
 
     const { data, error } = await supabaseAdmin
@@ -130,4 +218,3 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Erro ao deletar lead' }, { status: 500 });
   }
 }
-

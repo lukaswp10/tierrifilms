@@ -77,10 +77,26 @@ export interface Lead {
   telefone?: string;
   empresa?: string;
   projeto: string;
-  status: 'novo' | 'contatado' | 'fechado' | 'perdido';
+  status: 'novo' | 'contatado' | 'proposta' | 'negociando' | 'fechado' | 'perdido';
   notas?: string;
+  // Campos do CRM profissional
+  tipo_servico?: 'casamento' | 'evento' | 'corporativo' | 'clip' | 'outro';
+  data_evento?: string;
+  local_evento?: string;
+  orcamento_estimado?: number;
+  origem?: 'site' | 'instagram' | 'google' | 'indicacao' | 'outro';
+  prioridade?: 'alta' | 'media' | 'baixa';
+  proximo_contato?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface LeadInteracao {
+  id: string;
+  lead_id: string;
+  tipo: 'whatsapp' | 'email' | 'ligacao' | 'reuniao' | 'nota';
+  descricao?: string;
+  created_at: string;
 }
 
 // Funcoes de busca - Configuracoes
