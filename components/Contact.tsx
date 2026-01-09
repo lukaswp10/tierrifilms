@@ -4,10 +4,12 @@ import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
+import { useConfigs } from '@/lib/useConfigs';
 
 export default function Contact() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const { configs } = useConfigs();
   const [formState, setFormState] = useState({
     nome: '',
     email: '',
@@ -17,8 +19,11 @@ export default function Contact() {
   });
   const [emailError, setEmailError] = useState('');
 
-  // NUMERO DO WHATSAPP - ALTERE AQUI
-  const whatsappNumber = "5511999999999";
+  // Numero do WhatsApp do banco ou fallback
+  const whatsappNumber = configs['whatsapp'] || "5511999999999";
+
+  // Titulo da secao
+  const titulo = configs['contato_titulo'] || 'BORA FALAR!';
 
   // Validacao de email
   const isValidEmail = (email: string): boolean => {
@@ -61,7 +66,7 @@ ${formState.projeto}`.trim();
 
   return (
     <section id="contato" className="w-full py-16 md:py-24 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
-      {/* Titulo BORA FALAR! */}
+      {/* Titulo */}
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -69,8 +74,11 @@ ${formState.projeto}`.trim();
         className="text-center mb-16"
       >
         <h2 className="title-large">
-          <span className="text-white">BORA </span>
-          <span className="text-white text-italic">FALAR!</span>
+          {titulo.split(' ').map((word, i) => (
+            <span key={i} className={`text-white ${i > 0 ? 'text-italic' : ''}`}>
+              {word}{' '}
+            </span>
+          ))}
         </h2>
       </motion.div>
 

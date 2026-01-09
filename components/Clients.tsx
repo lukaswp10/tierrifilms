@@ -32,7 +32,11 @@ export default function Clients() {
   const row3 = partners.filter(p => p.row === 3);
 
   return (
-    <section className="w-full py-12 md:py-20 bg-white" ref={ref}>
+    <section 
+      className="w-full py-12 md:py-20" 
+      ref={ref}
+      style={{ backgroundColor: 'var(--bg-alt, #FFFFFF)' }}
+    >
       {/* Row 1 */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -48,8 +52,10 @@ export default function Clients() {
             transition={{ duration: 0.5, delay: index * 0.1 }}
             className="flex items-center justify-center"
           >
-            {/* Placeholder - trocar por <img src="logo.png" /> depois */}
-            <span className="text-sm md:text-lg lg:text-xl font-light tracking-wide text-black hover:text-gray-500 transition-colors duration-300 cursor-default">
+            <span 
+              className="text-sm md:text-lg lg:text-xl font-light tracking-wide hover:opacity-50 transition-opacity duration-300 cursor-default"
+              style={{ color: 'var(--text-alt, #000000)' }}
+            >
               {partner.name}
             </span>
           </motion.div>
@@ -71,7 +77,10 @@ export default function Clients() {
             transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
             className="flex items-center justify-center"
           >
-            <span className="text-sm md:text-lg lg:text-xl font-light tracking-wide text-black hover:text-gray-500 transition-colors duration-300 cursor-default">
+            <span 
+              className="text-sm md:text-lg lg:text-xl font-light tracking-wide hover:opacity-50 transition-opacity duration-300 cursor-default"
+              style={{ color: 'var(--text-alt, #000000)' }}
+            >
               {partner.name}
             </span>
           </motion.div>
@@ -93,7 +102,10 @@ export default function Clients() {
             transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
             className="flex items-center justify-center"
           >
-            <span className="text-sm md:text-lg lg:text-xl font-light tracking-wide text-black hover:text-gray-500 transition-colors duration-300 cursor-default">
+            <span 
+              className="text-sm md:text-lg lg:text-xl font-light tracking-wide hover:opacity-50 transition-opacity duration-300 cursor-default"
+              style={{ color: 'var(--text-alt, #000000)' }}
+            >
               {partner.name}
             </span>
           </motion.div>

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "cdn.sanity.io",
+        hostname: "res.cloudinary.com",
       },
     ],
   },
@@ -18,8 +18,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Excluir o Sanity Studio das headers restritivas
-        source: "/((?!studio).*)",
+        source: "/((?!admin).*)",
         headers: [
           {
             key: "X-Frame-Options",
@@ -52,8 +51,8 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: https://images.unsplash.com https://cdn.sanity.io",
-              "connect-src 'self' https://*.sanity.io",
+              "img-src 'self' data: https://images.unsplash.com https://res.cloudinary.com",
+              "connect-src 'self' https://*.supabase.co",
               "frame-src https://www.youtube.com https://player.vimeo.com",
               "frame-ancestors 'none'",
             ].join("; "),

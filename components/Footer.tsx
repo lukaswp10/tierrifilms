@@ -1,48 +1,54 @@
 'use client';
 
 import { Instagram, Youtube, Facebook } from 'lucide-react';
+import Link from 'next/link';
+import { useConfigs } from '@/lib/useConfigs';
 
 export default function Footer() {
+  const { configs } = useConfigs();
   const currentYear = new Date().getFullYear();
 
+  // Valores do banco ou fallbacks
+  const slogan = configs['slogan_footer'] || 'ETERNIZE O REAL';
+  const endereco = configs['endereco'] || 'SAO PAULO, SP';
+  const email = configs['email_contato'] || 'contato@tierrifilms.com.br';
+  const instagram = configs['instagram'] || 'https://instagram.com/tierrifilms';
+  const youtube = configs['youtube'] || 'https://youtube.com/@tierrifilms';
+  const facebook = configs['facebook'] || 'https://facebook.com/tierrifilms';
+
   const socialLinks = [
-    { icon: <Instagram className="w-6 h-6" />, label: "Instagram", href: "https://instagram.com/tierrifilms" },
-    { icon: <Youtube className="w-6 h-6" />, label: "YouTube", href: "https://youtube.com/@tierrifilms" },
-    { icon: <Facebook className="w-6 h-6" />, label: "Facebook", href: "https://facebook.com/tierrifilms" },
+    { icon: <Instagram className="w-6 h-6" />, label: "Instagram", href: instagram },
+    { icon: <Youtube className="w-6 h-6" />, label: "YouTube", href: youtube },
+    { icon: <Facebook className="w-6 h-6" />, label: "Facebook", href: facebook },
   ];
 
   return (
-    <footer className="w-full py-12 md:py-16 px-6 md:px-8 lg:px-16 bg-black border-t border-gray-800">
-      <div className="max-w-6xl mx-auto">
-        {/* Mobile: Centralizado | Desktop: Grid */}
-        <div className="flex flex-col items-center text-center md:text-left md:items-start md:grid md:grid-cols-3 gap-8 md:gap-8">
-          
+    <footer className="w-full py-12 px-4 md:px-8 lg:px-16 bg-black border-t border-gray-800">
+      <div className="max-w-6xl mx-auto text-center md:text-left">
+        <div className="grid md:grid-cols-3 gap-8 md:gap-8 items-center">
           {/* Slogan */}
-          <div>
-            <p className="text-base md:text-sm font-medium tracking-[0.2em] uppercase text-white">
-              ETERNIZE O REAL
+          <div className="order-1 md:order-1">
+            <p className="text-sm font-normal tracking-[0.15em] uppercase">
+              {slogan}
             </p>
           </div>
 
-          {/* Endereco */}
-          <div className="space-y-2 md:space-y-4">
+          {/* Endereco e Contato */}
+          <div className="space-y-2 order-2 md:order-2">
             <p className="text-sm font-light text-gray-400 uppercase tracking-wide">
-              SAO PAULO, SP
+              {endereco}
             </p>
-            <a 
-              href="mailto:contato@tierrifilms.com.br"
-              className="text-sm font-light text-gray-400 hover:text-white transition-colors block"
-            >
-              contato@tierrifilms.com.br
-            </a>
+            <Link href={`mailto:${email}`} className="text-sm font-light text-gray-400 hover:text-white transition-colors">
+              {email}
+            </Link>
           </div>
 
           {/* Redes Sociais */}
-          <div className="flex flex-col items-center md:items-start">
-            <p className="text-sm font-light text-gray-400 uppercase tracking-wide mb-4">
-              SIGA-NOS
+          <div className="order-3 md:order-3">
+            <p className="text-sm font-light text-gray-400 uppercase tracking-wide mb-3">
+              SIGA-NOS:
             </p>
-            <div className="flex gap-6">
+            <div className="flex justify-center md:justify-start gap-4">
               {socialLinks.map((social) => (
                 <a
                   key={social.label}
@@ -59,10 +65,10 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Copyright - Separado e centralizado */}
+        {/* Copyright */}
         <div className="mt-10 pt-6 border-t border-gray-800/50 text-center">
-          <p className="text-xs font-light text-gray-600 uppercase tracking-wider">
-            TIERRIFILMS {currentYear} &copy; TODOS OS DIREITOS RESERVADOS
+          <p className="text-xs font-light text-gray-600 uppercase tracking-wide">
+            TIERRIFILMS {currentYear} ALL RIGHTS RESERVED
           </p>
         </div>
       </div>

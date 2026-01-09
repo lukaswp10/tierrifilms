@@ -3,13 +3,7 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef, useEffect, useState } from 'react';
-
-const stats = [
-  { value: 150, label: "PRODUCOES", suffix: "+" },
-  { value: 200, label: "VIDEOS PRODUZIDOS", suffix: "+" },
-  { value: 5, label: "ANOS DE EXPERIENCIA", suffix: "" },
-  { value: 50, label: "EVENTOS POR ANO", suffix: "+" },
-];
+import { useConfigs } from '@/lib/useConfigs';
 
 // Componente para numero animado
 function AnimatedNumber({ value, suffix, isInView }: { value: number; suffix: string; isInView: boolean }) {
@@ -46,8 +40,32 @@ function AnimatedNumber({ value, suffix, isInView }: { value: number; suffix: st
 export default function Stats() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const { configs } = useConfigs();
 
   const currentYear = new Date().getFullYear();
+
+  const stats = [
+    { 
+      value: parseInt(configs['stat1_valor']) || 150, 
+      label: configs['stat1_label'] || "PRODUCOES", 
+      suffix: "+" 
+    },
+    { 
+      value: parseInt(configs['stat2_valor']) || 200, 
+      label: configs['stat2_label'] || "VIDEOS PRODUZIDOS", 
+      suffix: "+" 
+    },
+    { 
+      value: parseInt(configs['stat3_valor']) || 5, 
+      label: configs['stat3_label'] || "ANOS DE EXPERIENCIA", 
+      suffix: "" 
+    },
+    { 
+      value: parseInt(configs['stat4_valor']) || 50, 
+      label: configs['stat4_label'] || "EVENTOS POR ANO", 
+      suffix: "+" 
+    },
+  ];
 
   return (
     <section className="w-full py-12 md:py-20 px-4 md:px-8 lg:px-16 bg-black" ref={ref}>
