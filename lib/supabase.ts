@@ -58,6 +58,19 @@ export interface Parceiro {
   ordem: number;
 }
 
+export interface Lead {
+  id: string;
+  nome: string;
+  email: string;
+  telefone?: string;
+  empresa?: string;
+  projeto: string;
+  status: 'novo' | 'contatado' | 'fechado' | 'perdido';
+  notas?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Funcoes de busca - Configuracoes
 export async function getConfiguracao(chave: string): Promise<string | null> {
   const { data, error } = await supabase

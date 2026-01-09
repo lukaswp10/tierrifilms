@@ -31,7 +31,7 @@ export default function Contact() {
     return emailRegex.test(email);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!isValidEmail(formState.email)) {
@@ -39,6 +39,18 @@ export default function Contact() {
       return;
     }
     setEmailError('');
+    
+    // Salvar lead no banco (nao bloqueia se falhar)
+    try {
+      await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formState),
+      });
+    } catch (error) {
+      console.error('Erro ao salvar lead:', error);
+      // Continua mesmo se falhar - nao bloqueia o usuario
+    }
     
     const empresaTexto = formState.empresa ? `Empresa: ${formState.empresa}` : '';
     const telefoneTexto = formState.telefone ? `Telefone: ${formState.telefone}` : '';

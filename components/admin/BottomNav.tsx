@@ -1,27 +1,29 @@
 'use client';
 
-import { Home, Images, Users, MoreHorizontal, X } from 'lucide-react';
+import { Home, Images, Users, MoreHorizontal, X, Key, MessageCircle } from 'lucide-react';
 import { useState } from 'react';
 
-export type Tab = 'home' | 'galerias' | 'equipe' | 'parceiros' | 'usuarios' | 'recursos';
+export type Tab = 'home' | 'galerias' | 'clientes' | 'equipe' | 'parceiros' | 'usuarios' | 'recursos';
 
 interface BottomNavProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   isAdmin: boolean;
   onLogout: () => void;
+  onChangePassword?: () => void;
 }
 
-export default function BottomNav({ activeTab, onTabChange, isAdmin, onLogout }: BottomNavProps) {
+export default function BottomNav({ activeTab, onTabChange, isAdmin, onLogout, onChangePassword }: BottomNavProps) {
   const [showMore, setShowMore] = useState(false);
 
   const mainTabs = [
     { id: 'home' as Tab, label: 'Site', icon: Home },
     { id: 'galerias' as Tab, label: 'Galerias', icon: Images },
-    { id: 'equipe' as Tab, label: 'Equipe', icon: Users },
+    { id: 'clientes' as Tab, label: 'Clientes', icon: MessageCircle },
   ];
 
   const moreTabs = [
+    { id: 'equipe' as Tab, label: 'Equipe' },
     { id: 'parceiros' as Tab, label: 'Parceiros' },
     { id: 'recursos' as Tab, label: 'Uso do Sistema' },
     ...(isAdmin ? [{ id: 'usuarios' as Tab, label: 'Usuarios' }] : []),
@@ -70,7 +72,19 @@ export default function BottomNav({ activeTab, onTabChange, isAdmin, onLogout }:
               </button>
             ))}
             
-            <div className="border-t border-gray-800 mt-3 pt-3">
+            <div className="border-t border-gray-800 mt-3 pt-3 space-y-1">
+              {onChangePassword && (
+                <button
+                  onClick={() => {
+                    onChangePassword();
+                    setShowMore(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
+                >
+                  <Key className="w-4 h-4" />
+                  Alterar Senha
+                </button>
+              )}
               <button
                 onClick={onLogout}
                 className="w-full text-left px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
@@ -107,7 +121,7 @@ export default function BottomNav({ activeTab, onTabChange, isAdmin, onLogout }:
           <button
             onClick={() => setShowMore(!showMore)}
             className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
-              showMore || ['parceiros', 'recursos', 'usuarios'].includes(activeTab)
+              showMore || ['equipe', 'parceiros', 'recursos', 'usuarios'].includes(activeTab)
                 ? 'text-white'
                 : 'text-gray-500'
             }`}

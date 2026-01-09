@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { supabase, Usuario } from '@/lib/supabase';
 import { useMediaQuery } from '@/lib/useMediaQuery';
-import { Plus, Trash2, X, Shield, User } from 'lucide-react';
+import { Plus, Trash2, X, Shield, User, Key } from 'lucide-react';
+import ChangePasswordModal from './ChangePasswordModal';
 
 export default function AdminUsuarios() {
   const { isMobile } = useMediaQuery();
@@ -13,6 +14,8 @@ export default function AdminUsuarios() {
   const [novoUsuario, setNovoUsuario] = useState({ email: '', nome: '', senha: '', role: 'editor' });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ id: string; nome: string; email: string } | null>(null);
+  const [showMyPassword, setShowMyPassword] = useState(false);
 
   useEffect(() => {
     loadUsuarios();
@@ -93,15 +96,26 @@ export default function AdminUsuarios() {
           <h2 className="text-xl font-semibold">Usuarios</h2>
           <p className="text-gray-400 text-sm mt-1">Pessoas com acesso ao painel admin</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className={buttonPrimary}
-        >
-          <span className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            {isMobile ? 'Novo' : 'Novo Usuario'}
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMyPassword(true)}
+            className={buttonSecondary}
+          >
+            <span className="flex items-center gap-2">
+              <Key className="w-4 h-4" />
+              {isMobile ? 'Senha' : 'Minha Senha'}
+            </span>
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className={buttonPrimary}
+          >
+            <span className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              {isMobile ? 'Novo' : 'Novo Usuario'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Lista de Usuarios */}
@@ -126,7 +140,7 @@ export default function AdminUsuarios() {
                 <p className="text-sm text-gray-500 truncate">{usuario.email}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className={`px-3 py-1.5 text-xs font-medium rounded-full ${
                 usuario.role === 'admin' 
                   ? 'bg-purple-500/20 text-purple-400' 
@@ -134,10 +148,26 @@ export default function AdminUsuarios() {
               }`}>
                 {usuario.role === 'admin' ? 'Admin' : 'Editor'}
               </span>
+              {/* Resetar Senha - apenas para editores */}
+              {usuario.role === 'editor' && (
+                <button
+                  onClick={() => setResetPasswordUser({ 
+                    id: usuario.id, 
+                    nome: usuario.nome, 
+                    email: usuario.email 
+                  })}
+                  className="p-2 text-gray-500 hover:text-amber-400 transition-colors"
+                  title="Resetar senha"
+                >
+                  <Key className="w-4 h-4" />
+                </button>
+              )}
+              {/* Excluir - nao pode excluir admin principal */}
               {usuario.email !== 'admin@tierrifilms.com.br' && (
                 <button
                   onClick={() => handleDeleteUsuario(usuario.id, usuario.email)}
                   className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                  title="Excluir usuario"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -284,6 +314,25 @@ export default function AdminUsuarios() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Resetar Senha */}
+      {resetPasswordUser && (
+        <ChangePasswordModal
+          mode="reset"
+          targetUser={resetPasswordUser}
+          onClose={() => setResetPasswordUser(null)}
+          onSuccess={() => setResetPasswordUser(null)}
+        />
+      )}
+
+      {/* Modal de Alterar Minha Senha */}
+      {showMyPassword && (
+        <ChangePasswordModal
+          mode="self"
+          onClose={() => setShowMyPassword(false)}
+          onSuccess={() => setShowMyPassword(false)}
+        />
       )}
     </div>
   );

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Home, Images, Users, BarChart3, Building2, Settings, LogOut, ExternalLink } from 'lucide-react';
+import { Home, Images, Users, BarChart3, Building2, Settings, LogOut, ExternalLink, Key, ChevronDown, MessageCircle } from 'lucide-react';
 import { LogoText } from '@/components/Logo';
 import { SessionUser } from '@/lib/auth';
 import { useMediaQuery } from '@/lib/useMediaQuery';
@@ -13,6 +13,8 @@ import AdminEquipe from './AdminEquipe';
 import AdminParceiros from './AdminParceiros';
 import AdminUsuarios from './AdminUsuarios';
 import AdminUsage from './AdminUsage';
+import AdminClientes from './AdminClientes';
+import ChangePasswordModal from './ChangePasswordModal';
 
 interface AdminDashboardProps {
   user: SessionUser;
@@ -23,6 +25,21 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const { isMobile } = useMediaQuery();
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [loading, setLoading] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
     setLoading(true);
@@ -34,6 +51,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const desktopTabs = [
     { id: 'home' as Tab, label: 'Site', icon: Home, description: 'Conteudo da pagina inicial' },
     { id: 'galerias' as Tab, label: 'Galerias', icon: Images, description: 'Portfolio de trabalhos' },
+    { id: 'clientes' as Tab, label: 'Clientes', icon: MessageCircle, description: 'Leads do formulario' },
     { id: 'equipe' as Tab, label: 'Equipe', icon: Users, description: 'Membros da equipe' },
     { id: 'parceiros' as Tab, label: 'Parceiros', icon: Building2, description: 'Clientes e parceiros' },
     { id: 'recursos' as Tab, label: 'Uso do Sistema', icon: BarChart3, description: 'Estatisticas de uso' },
@@ -50,6 +68,8 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         return <AdminHome />;
       case 'galerias':
         return <AdminGalerias />;
+      case 'clientes':
+        return <AdminClientes />;
       case 'equipe':
         return <AdminEquipe />;
       case 'parceiros':
@@ -100,7 +120,17 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           onTabChange={setActiveTab}
           isAdmin={user.role === 'admin'}
           onLogout={handleLogout}
+          onChangePassword={() => setShowChangePassword(true)}
         />
+
+        {/* Modal Alterar Senha (Mobile) */}
+        {showChangePassword && (
+          <ChangePasswordModal
+            mode="self"
+            onClose={() => setShowChangePassword(false)}
+            onSuccess={() => setShowChangePassword(false)}
+          />
+        )}
       </div>
     );
   }
@@ -146,37 +176,56 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           })}
         </nav>
 
-        {/* Usuario e Logout */}
-        <div className="p-4 border-t border-gray-800">
-          <div className="flex items-center gap-3 mb-3">
+        {/* Usuario e Menu */}
+        <div className="p-4 border-t border-gray-800" ref={userMenuRef}>
+          {/* Botao do usuario que abre dropdown */}
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-900 transition-colors"
+          >
             <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-white font-medium">
               {user.nome.charAt(0).toUpperCase()}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 text-left">
               <p className="text-sm font-medium text-white truncate">{user.nome}</p>
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
             </div>
-          </div>
-          
-          <div className="flex gap-2">
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs text-gray-400 hover:text-white hover:bg-gray-900 rounded-lg transition-colors"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Ver site
-            </a>
-            <button
-              onClick={handleLogout}
-              disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Sair
-            </button>
-          </div>
+            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {showUserMenu && (
+            <div className="mt-2 py-1 bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+              <button
+                onClick={() => {
+                  setShowChangePassword(true);
+                  setShowUserMenu(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+              >
+                <Key className="w-4 h-4" />
+                Alterar Senha
+              </button>
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Ver Site
+              </a>
+              <div className="border-t border-gray-800 my-1" />
+              <button
+                onClick={handleLogout}
+                disabled={loading}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+              >
+                <LogOut className="w-4 h-4" />
+                Sair do Painel
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -201,6 +250,15 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           </div>
         </div>
       </main>
+
+      {/* Modal Alterar Senha */}
+      {showChangePassword && (
+        <ChangePasswordModal
+          mode="self"
+          onClose={() => setShowChangePassword(false)}
+          onSuccess={() => setShowChangePassword(false)}
+        />
+      )}
     </div>
   );
 }

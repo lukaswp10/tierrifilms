@@ -62,6 +62,20 @@ CREATE TABLE IF NOT EXISTS parceiros (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Tabela de leads (contatos do formulario)
+CREATE TABLE IF NOT EXISTS leads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome VARCHAR(100) NOT NULL,
+  email VARCHAR(100) NOT NULL,
+  telefone VARCHAR(20),
+  empresa VARCHAR(100),
+  projeto TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'novo' CHECK (status IN ('novo', 'contatado', 'fechado', 'perdido')),
+  notas TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- =============================================
 -- DADOS INICIAIS
 -- =============================================
@@ -188,6 +202,7 @@ ALTER TABLE galerias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE galeria_fotos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE equipe ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parceiros ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 
 -- Remover politicas antigas (se existirem)
 DROP POLICY IF EXISTS "Leitura publica configuracoes" ON configuracoes;
@@ -260,6 +275,16 @@ CREATE POLICY "insert_usuarios" ON usuarios FOR INSERT
 CREATE POLICY "update_usuarios" ON usuarios FOR UPDATE 
   USING (auth.role() = 'service_role');
 CREATE POLICY "delete_usuarios" ON usuarios FOR DELETE 
+  USING (auth.role() = 'service_role');
+
+-- Leads: anon pode inserir (formulario publico), service_role pode tudo
+CREATE POLICY "insert_leads_anon" ON leads FOR INSERT 
+  WITH CHECK (true);
+CREATE POLICY "select_leads" ON leads FOR SELECT 
+  USING (auth.role() = 'service_role');
+CREATE POLICY "update_leads" ON leads FOR UPDATE 
+  USING (auth.role() = 'service_role');
+CREATE POLICY "delete_leads" ON leads FOR DELETE 
   USING (auth.role() = 'service_role');
 
 -- =============================================
