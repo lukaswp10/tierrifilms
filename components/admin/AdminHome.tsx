@@ -474,34 +474,57 @@ export default function AdminHome() {
       {/* MENU / NAVBAR */}
       {activeSection === 'navbar' && (
         <div className="space-y-4">
-          <Tip text="Configure os links do menu de navegacao (ate 5 links)" />
-          
-          {[1, 2, 3, 4, 5].map((num) => (
-            <div key={num} className="bg-gray-800/30 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400">{num}</span>
-                <span className="text-sm text-gray-400">Link {num}</span>
+          {/* Explicacao */}
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+            <p className="text-sm text-blue-300">
+              <strong>Menu de Navegacao</strong> - Esses links aparecem quando o visitante clica no icone de menu (3 linhas no canto superior direito).
+            </p>
+            <p className="text-xs text-blue-300/70 mt-2">
+              Links vazios nao aparecem no menu. Deixe em branco o que nao quiser mostrar.
+            </p>
+          </div>
+
+          {/* Links */}
+          <div className="space-y-3">
+            {[
+              { num: 1, sugestao: 'INICIO', destino: '#', dica: 'Volta ao topo da pagina' },
+              { num: 2, sugestao: 'SOBRE', destino: '#sobre', dica: 'Ancora para secao Sobre' },
+              { num: 3, sugestao: 'CASES', destino: '#portfolio', dica: 'Ancora para Portfolio' },
+              { num: 4, sugestao: 'EQUIPE', destino: '#equipe', dica: 'Ancora para Equipe' },
+              { num: 5, sugestao: 'CONTATO', destino: '#contato', dica: 'Ancora para Contato' },
+            ].map(({ num, sugestao, destino, dica }) => (
+              <div key={num} className="bg-gray-800/30 rounded-xl p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1.5">Texto do link</label>
+                    <input
+                      type="text"
+                      value={configs[`nav_link${num}_label`] || ''}
+                      onChange={(e) => handleChange(`nav_link${num}_label`, e.target.value)}
+                      className={inputClass}
+                      placeholder={sugestao}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1.5">Destino <span className="text-gray-600">({dica})</span></label>
+                    <input
+                      type="text"
+                      value={configs[`nav_link${num}_href`] || ''}
+                      onChange={(e) => handleChange(`nav_link${num}_href`, e.target.value)}
+                      className={inputClass}
+                      placeholder={destino}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  value={configs[`nav_link${num}_label`] || ''}
-                  onChange={(e) => handleChange(`nav_link${num}_label`, e.target.value)}
-                  className={inputClass}
-                  placeholder="Texto (ex: INICIO)"
-                />
-                <input
-                  type="text"
-                  value={configs[`nav_link${num}_href`] || ''}
-                  onChange={(e) => handleChange(`nav_link${num}_href`, e.target.value)}
-                  className={inputClass}
-                  placeholder="Destino (ex: #sobre)"
-                />
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
           
-          <Tip text="Use # para links internos (ex: #sobre, #contato) ou URLs para links externos" />
+          {/* Dica final */}
+          <div className="text-xs text-gray-500 space-y-1 px-1">
+            <p><strong>#</strong> = Volta ao topo | <strong>#sobre</strong> = Vai para secao Sobre | <strong>#contato</strong> = Vai para Contato</p>
+            <p>Para links externos, use a URL completa: <span className="text-gray-400">https://instagram.com/tierrifilms</span></p>
+          </div>
         </div>
       )}
 
