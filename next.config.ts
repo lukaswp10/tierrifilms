@@ -26,10 +26,20 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   
+  // Página do kit Best Nature (cliente do Lucas), hospedada no projeto
+  // Vercel "bestnature-vsl" e mostrada aqui até ter o domínio próprio.
+  // Ela traz os próprios cabeçalhos de segurança; por isso fica fora dos daqui.
+  async rewrites() {
+    return [
+      { source: "/bestnature", destination: "https://bestnature-vsl.vercel.app/bestnature" },
+      { source: "/bestnature/:path*", destination: "https://bestnature-vsl.vercel.app/bestnature/:path*" },
+    ];
+  },
+
   async headers() {
     return [
       {
-        source: "/((?!admin).*)",
+        source: "/((?!admin|bestnature).*)",
         headers: [
           {
             key: "X-Frame-Options",
