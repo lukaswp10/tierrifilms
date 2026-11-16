@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 import { createSessionToken } from '@/lib/auth';
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Buscar usuario no banco (usando supabaseAdmin por causa do RLS)
-    const { data: usuario, error } = await supabaseAdmin
+    // Buscar usuario no banco (usando db por causa do RLS)
+    const { data: usuario, error } = await db
       .from('usuarios')
       .select('*')
       .eq('email', email.toLowerCase().trim())

@@ -12,7 +12,7 @@ interface UsageData {
     plan: string;
     lastUpdated: string;
   } | null;
-  supabase: {
+  banco: {
     database: { used: number; limit: number; usedFormatted: string; limitFormatted: string; percentage: number };
     tables: { name: string; count: number }[];
     totalRecords: number;
@@ -245,7 +245,7 @@ export default function AdminUsage() {
           )}
         </div>
 
-        {/* Supabase */}
+        {/* Banco de dados (Neon) */}
         <div className="bg-gray-800/50 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-green-500/20 rounded-lg">
@@ -253,25 +253,25 @@ export default function AdminUsage() {
             </div>
             <div>
               <h3 className="font-semibold">Banco de Dados</h3>
-              <p className="text-sm text-gray-400">Supabase (dados do site)</p>
+              <p className="text-sm text-gray-400">Neon (dados do site)</p>
             </div>
             <span className="ml-auto text-xs px-2 py-1 bg-gray-700 rounded">
-              Free
+              Pago por uso
             </span>
           </div>
 
           <UsageBar 
-            percentage={usage.supabase.database.percentage}
-            label="Espaco Usado (estimado)"
-            used={usage.supabase.database.usedFormatted}
-            limit={usage.supabase.database.limitFormatted}
-            equivalent={`${usage.supabase.totalRecords.toLocaleString()} registros`}
+            percentage={usage.banco.database.percentage}
+            label="Espaco Usado"
+            used={usage.banco.database.usedFormatted}
+            limit={usage.banco.database.limitFormatted}
+            equivalent={`${usage.banco.totalRecords.toLocaleString()} registros`}
           />
 
           <div className="mt-4 pt-4 border-t border-gray-700">
             <p className="text-sm text-gray-400 mb-3">Registros por tabela:</p>
             <div className="space-y-2">
-              {usage.supabase.tables.map((table) => (
+              {usage.banco.tables.map((table) => (
                 <div key={table.name} className="flex items-center justify-between text-sm">
                   <span className="text-gray-500">{table.name}</span>
                   <span className="text-gray-300">{table.count}</span>

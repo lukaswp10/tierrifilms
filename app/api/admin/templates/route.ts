@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 
 // GET - Listar templates
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('whatsapp_templates')
       .select('*')
       .order('ordem', { ascending: true });
@@ -40,14 +40,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Pegar a maior ordem atual
-    const { data: maxOrdem } = await supabaseAdmin
+    const { data: maxOrdem } = await db
       .from('whatsapp_templates')
       .select('ordem')
       .order('ordem', { ascending: false })
       .limit(1)
       .single();
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('whatsapp_templates')
       .insert([{
         nome: nome.substring(0, 100),
@@ -85,7 +85,7 @@ export async function PUT(request: NextRequest) {
     if (nome !== undefined) updateData.nome = nome.substring(0, 100);
     if (mensagem !== undefined) updateData.mensagem = mensagem.substring(0, 2000);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('whatsapp_templates')
       .update(updateData)
       .eq('id', id)
@@ -116,7 +116,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID e obrigatorio' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from('whatsapp_templates')
       .delete()
       .eq('id', id);

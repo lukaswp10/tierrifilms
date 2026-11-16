@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
-import { Galeria, GaleriaFoto } from '@/lib/supabase';
+import { Galeria, GaleriaFoto } from '@/lib/tipos';
 import { getImageBlurUrl } from '@/lib/image-utils';
 
 interface Props {

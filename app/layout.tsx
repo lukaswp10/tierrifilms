@@ -3,7 +3,7 @@ import { Oswald } from 'next/font/google';
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
 import { ConfigsProvider } from "@/lib/ConfigsContext";
-import { createClient } from '@supabase/supabase-js';
+import { getTodasConfiguracoes } from "@/lib/dados";
 
 const oswald = Oswald({
   subsets: ['latin'],
@@ -12,54 +12,29 @@ const oswald = Oswald({
   variable: '--font-oswald',
 });
 
-// Busca configs do banco para metadata (server-side)
-async function getMetadataConfigs(): Promise<{ titulo: string; descricao: string }> {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    
-    const { data } = await supabase
-      .from('configuracoes')
-      .select('chave, valor')
-      .in('chave', ['site_titulo', 'site_descricao']);
-    
-    const configs = (data || []).reduce((acc, item) => {
-      acc[item.chave] = item.valor || '';
-      return acc;
-    }, {} as Record<string, string>);
-    
-    return {
-      titulo: configs['site_titulo'] || 'TIERRIFILMS',
-      descricao: configs['site_descricao'] || 'Especialistas em captar momentos reais. Producao audiovisual para casamentos e eventos.',
-    };
-  } catch {
-    return {
-      titulo: 'TIERRIFILMS',
-      descricao: 'Especialistas em captar momentos reais. Producao audiovisual para casamentos e eventos.',
-    };
-  }
-}
+const TITULO_PADRAO = 'TIERRIFILMS';
+const DESCRICAO_PADRAO = 'Especialistas em captar momentos reais. Producao audiovisual para casamentos e eventos.';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { titulo, descricao } = await getMetadataConfigs();
-  
+  const configs = await getTodasConfiguracoes();
   return {
-    title: titulo,
-    description: descricao,
+    title: configs['site_titulo'] || TITULO_PADRAO,
+    description: configs['site_descricao'] || DESCRICAO_PADRAO,
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Textos e cores do site vem prontos do servidor (sem "Carregando..." no navegador).
+  const configs = await getTodasConfiguracoes();
+
   return (
     <html lang="pt-BR" className={oswald.variable}>
       <body className={`${oswald.className} antialiased`} style={{ backgroundColor: '#000000', color: '#ffffff' }}>
-        <ConfigsProvider>
+        <ConfigsProvider initialConfigs={configs}>
           <ThemeProvider>
             {children}
           </ThemeProvider>

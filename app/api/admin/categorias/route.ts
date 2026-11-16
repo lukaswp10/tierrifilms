@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 
 // GET - Listar categorias
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('categorias')
       .select('*')
       .order('ordem', { ascending: true });
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Buscar maior ordem atual
-    const { data: maxOrdem } = await supabaseAdmin
+    const { data: maxOrdem } = await db
       .from('categorias')
       .select('ordem')
       .order('ordem', { ascending: false })
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     const novaOrdem = (maxOrdem?.ordem || 0) + 1;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('categorias')
       .insert({
         nome: nome.trim().substring(0, 100),
@@ -91,7 +91,7 @@ export async function PUT(request: NextRequest) {
     if (nome !== undefined) updateData.nome = nome.trim().substring(0, 100);
     if (ordem !== undefined) updateData.ordem = ordem;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('categorias')
       .update(updateData)
       .eq('id', id)
@@ -128,14 +128,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verificar se ha galerias usando esta categoria
-    const { data: categoria } = await supabaseAdmin
+    const { data: categoria } = await db
       .from('categorias')
       .select('nome')
       .eq('id', id)
       .single();
 
     if (categoria) {
-      const { count } = await supabaseAdmin
+      const { count } = await db
         .from('galerias')
         .select('*', { count: 'exact', head: true })
         .eq('categoria', categoria.nome);
@@ -147,7 +147,7 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from('categorias')
       .delete()
       .eq('id', id);

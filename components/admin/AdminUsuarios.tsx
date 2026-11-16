@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, Usuario } from '@/lib/supabase';
+import { Usuario } from '@/lib/tipos';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { Plus, Trash2, X, Shield, User, Key } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -22,13 +22,12 @@ export default function AdminUsuarios() {
   }, []);
 
   const loadUsuarios = async () => {
-    const { data } = await supabase
-      .from('usuarios')
-      .select('id, email, nome, role, created_at')
-      .order('created_at', { ascending: true });
-    
-    if (data) setUsuarios(data as Usuario[]);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/admin/usuarios');
+      if (res.ok) setUsuarios((await res.json()) as Usuario[]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateUsuario = async () => {
@@ -71,7 +70,11 @@ export default function AdminUsuarios() {
     }
 
     if (confirm(`Tem certeza que deseja excluir o usuario ${email}?`)) {
-      await supabase.from('usuarios').delete().eq('id', id);
+      const res = await fetch(`/api/admin/usuarios?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Erro ao excluir usuario');
+      }
       loadUsuarios();
     }
   };

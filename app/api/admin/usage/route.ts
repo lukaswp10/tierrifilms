@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { db, consulta } from '@/lib/db';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configurar Cloudinary (mesmo que upload/route.ts)
@@ -17,9 +17,8 @@ const LIMITS = {
     bandwidth: 25 * 1024 * 1024 * 1024, // 25 GB em bytes
     credits: 25,
   },
-  supabase: {
-    database: 500 * 1024 * 1024, // 500 MB em bytes
-    bandwidth: 5 * 1024 * 1024 * 1024, // 5 GB em bytes
+  banco: {
+    database: 10 * 1024 * 1024 * 1024, // Neon pago por uso: 10 GB so como referencia
   },
   vercel: {
     bandwidth: 100 * 1024 * 1024 * 1024, // 100 GB em bytes
@@ -51,30 +50,25 @@ export async function GET() {
       console.error('Erro ao buscar uso do Cloudinary:', error);
     }
 
-    // 2. Calcular uso do banco de dados Supabase
-    const supabaseData = {
+    // 2. Uso do banco (Neon): tamanho real + registros por tabela
+    const bancoData = {
       tables: [] as { name: string; count: number }[],
       totalRecords: 0,
-      estimatedSize: 0,
+      size: 0,
     };
 
     try {
-      // Contar registros de cada tabela
-      const tables = ['configuracoes', 'galerias', 'galeria_fotos', 'equipe', 'usuarios'];
-      
-      for (const table of tables) {
-        const { count } = await supabase
-          .from(table)
-          .select('*', { count: 'exact', head: true });
-        
-        supabaseData.tables.push({ name: table, count: count || 0 });
-        supabaseData.totalRecords += count || 0;
-      }
-
-      // Estimativa de tamanho (media de 2KB por registro)
-      supabaseData.estimatedSize = supabaseData.totalRecords * 2048;
+      const tables = ['configuracoes', 'galerias', 'galeria_fotos', 'categorias', 'equipe', 'parceiros', 'leads', 'lead_interacoes', 'whatsapp_templates', 'usuarios'] as const;
+      const contagens = await Promise.all(tables.map((t) => db.from(t).select('*', { count: 'exact', head: true })));
+      tables.forEach((t, i) => {
+        const count = contagens[i].count || 0;
+        bancoData.tables.push({ name: t, count });
+        bancoData.totalRecords += count;
+      });
+      const [tamanho] = await consulta<{ bytes: number }>('SELECT pg_database_size(current_database())::bigint AS bytes');
+      bancoData.size = Number(tamanho?.bytes || 0);
     } catch (error) {
-      console.error('Erro ao calcular uso do Supabase:', error);
+      console.error('Erro ao calcular uso do banco:', error);
     }
 
     // 3. Formatar resposta
@@ -104,16 +98,16 @@ export async function GET() {
         lastUpdated: cloudinaryData.last_updated || new Date().toISOString(),
       } : null,
       
-      supabase: {
+      banco: {
         database: {
-          used: supabaseData.estimatedSize,
-          limit: LIMITS.supabase.database,
-          usedFormatted: formatBytes(supabaseData.estimatedSize),
-          limitFormatted: '500 MB',
-          percentage: Math.round((supabaseData.estimatedSize / LIMITS.supabase.database) * 100),
+          used: bancoData.size,
+          limit: LIMITS.banco.database,
+          usedFormatted: formatBytes(bancoData.size),
+          limitFormatted: '10 GB',
+          percentage: Math.round((bancoData.size / LIMITS.banco.database) * 100),
         },
-        tables: supabaseData.tables,
-        totalRecords: supabaseData.totalRecords,
+        tables: bancoData.tables,
+        totalRecords: bancoData.totalRecords,
       },
 
       vercel: {

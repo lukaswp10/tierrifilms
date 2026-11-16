@@ -2,46 +2,16 @@
 
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { supabase, Galeria } from '@/lib/supabase';
+import type { Galeria } from '@/lib/tipos';
 import { getImageBlurUrl } from '@/lib/image-utils';
 
-export default function Portfolio() {
+export default function Portfolio({ galerias }: { galerias: Galeria[] }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
-  const [galerias, setGalerias] = useState<Galeria[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadGalerias() {
-      const { data } = await supabase
-        .from('galerias')
-        .select('*')
-        .eq('is_principal', true)
-        .order('ordem', { ascending: true })
-        .limit(6);
-      
-      if (data) setGalerias(data);
-      setLoading(false);
-    }
-    loadGalerias();
-  }, []);
-
-  if (loading) {
-    return (
-      <section id="cases" className="w-full py-12 md:py-20 bg-black" ref={ref}>
-        <div className="px-4 md:px-8 lg:px-16 mb-8 md:mb-12">
-          <Link href="/galeria" className="group inline-block">
-            <h2 className="title-large text-outline transition-all duration-300 group-hover:text-white">CASES</h2>
-          </Link>
-        </div>
-        <div className="text-center text-gray-500 py-20">Carregando...</div>
-      </section>
-    );
-  }
 
   return (
     <section id="cases" className="w-full py-12 md:py-20 bg-black" ref={ref}>

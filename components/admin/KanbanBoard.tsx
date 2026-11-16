@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Lead } from '@/lib/supabase';
+import { Lead } from '@/lib/tipos';
 import {
   DndContext,
   DragOverlay,

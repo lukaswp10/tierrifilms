@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, Equipe } from '@/lib/supabase';
+import { Equipe } from '@/lib/tipos';
 import { CldUploadWidget } from 'next-cloudinary';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { Plus, Edit2, Trash2, X, User } from 'lucide-react';
@@ -19,29 +19,24 @@ export default function AdminEquipe() {
   }, []);
 
   const loadEquipe = async () => {
-    const { data } = await supabase
-      .from('equipe')
-      .select('*')
-      .order('ordem', { ascending: true });
-    
-    if (data) setEquipe(data);
-    setLoading(false);
+    try {
+      const res = await fetch('/api/admin/equipe');
+      if (res.ok) setEquipe(await res.json());
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSaveMembro = async () => {
     if (!editingMembro?.nome) return;
     setSaving(true);
 
-    if (editingMembro.id) {
-      await supabase
-        .from('equipe')
-        .update(editingMembro)
-        .eq('id', editingMembro.id);
-    } else {
-      await supabase
-        .from('equipe')
-        .insert([{ ...editingMembro, ordem: equipe.length + 1 }]);
-    }
+    const res = await fetch('/api/admin/equipe', {
+      method: editingMembro.id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editingMembro.id ? editingMembro : { ...editingMembro, ordem: equipe.length + 1 }),
+    });
+    if (!res.ok) alert('Erro ao salvar membro');
 
     setShowModal(false);
     setEditingMembro(null);
@@ -51,7 +46,7 @@ export default function AdminEquipe() {
 
   const handleDeleteMembro = async (id: string) => {
     if (confirm('Tem certeza que deseja remover este membro?')) {
-      await supabase.from('equipe').delete().eq('id', id);
+      await fetch(`/api/admin/equipe?id=${id}`, { method: 'DELETE' });
       loadEquipe();
     }
   };

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 
 // GET - Buscar todas as configuracoes
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('configuracoes')
       .select('chave, valor');
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       // Sanitizar valor (remover scripts maliciosos basicos)
       const valorSanitizado = sanitizeValue(String(valor));
 
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from('configuracoes')
         .upsert({ chave, valor: valorSanitizado }, { onConflict: 'chave' });
 

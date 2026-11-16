@@ -1,7 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabase } from './supabase';
+import { createContext, useContext, ReactNode } from 'react';
 
 type ConfigsContextType = {
   configs: Record<string, string>;
@@ -10,37 +9,16 @@ type ConfigsContextType = {
 
 const ConfigsContext = createContext<ConfigsContextType>({
   configs: {},
-  loading: true,
+  loading: false,
 });
 
-export function ConfigsProvider({ children }: { children: ReactNode }) {
-  const [configs, setConfigs] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase
-        .from('configuracoes')
-        .select('chave, valor');
-      
-      if (data) {
-        const map = data.reduce((acc, item) => {
-          acc[item.chave] = item.valor || '';
-          return acc;
-        }, {} as Record<string, string>);
-        setConfigs(map);
-      }
-      setLoading(false);
-    }
-    load();
-  }, []);
-
+// Os textos/cores do site chegam prontos do servidor (app/layout.tsx).
+export function ConfigsProvider({ initialConfigs, children }: { initialConfigs: Record<string, string>; children: ReactNode }) {
   return (
-    <ConfigsContext.Provider value={{ configs, loading }}>
+    <ConfigsContext.Provider value={{ configs: initialConfigs, loading: false }}>
       {children}
     </ConfigsContext.Provider>
   );
 }
 
 export const useConfigs = () => useContext(ConfigsContext);
-

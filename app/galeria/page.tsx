@@ -1,4 +1,4 @@
-import { getTodasGalerias } from '@/lib/supabase';
+import { getTodasGalerias } from '@/lib/dados';
 import GaleriaList from '@/components/GaleriaList';
 
 export const metadata = {

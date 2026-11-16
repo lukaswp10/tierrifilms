@@ -2,44 +2,13 @@
 
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
+import { useRef } from 'react';
 import Image from 'next/image';
-import { supabase, Equipe } from '@/lib/supabase';
+import type { Equipe } from '@/lib/tipos';
 
-export default function Crew() {
+export default function Crew({ equipe }: { equipe: Equipe[] }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const [equipe, setEquipe] = useState<Equipe[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadEquipe() {
-      const { data } = await supabase
-        .from('equipe')
-        .select('*')
-        .order('ordem', { ascending: true });
-      
-      if (data) setEquipe(data);
-      setLoading(false);
-    }
-    loadEquipe();
-  }, []);
-
-  if (loading) {
-    return (
-      <section id="equipe" className="w-full py-12 md:py-20 bg-black" ref={ref}>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.8 }}
-          className="px-4 md:px-8 lg:px-16 mb-4 md:mb-8"
-        >
-          <h2 className="title-large text-outline">CREW</h2>
-        </motion.div>
-        <div className="text-center text-gray-500 py-20">Carregando equipe...</div>
-      </section>
-    );
-  }
 
   if (equipe.length === 0) {
     return (

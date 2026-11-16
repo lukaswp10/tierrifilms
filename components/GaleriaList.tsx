@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
-import { Galeria } from '@/lib/supabase';
+import { Galeria } from '@/lib/tipos';
 import { getImageBlurUrl } from '@/lib/image-utils';
 import Navbar from './Navbar';
 

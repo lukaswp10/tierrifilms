@@ -2,53 +2,19 @@
 
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
-import { useRef, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useRef } from 'react';
 import Image from 'next/image';
+import type { Parceiro } from '@/lib/tipos';
 
-interface Parceiro {
-  id: string;
-  nome: string;
-  logo_url?: string;
-  ordem: number;
-}
-
-export default function Clients() {
+export default function Clients({ parceiros }: { parceiros: Parceiro[] }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-50px" });
-  const [parceiros, setParceiros] = useState<Parceiro[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadParceiros() {
-      const { data } = await supabase
-        .from('parceiros')
-        .select('*')
-        .order('ordem', { ascending: true });
-      
-      if (data) {
-        setParceiros(data);
-      }
-      setLoading(false);
-    }
-    loadParceiros();
-  }, []);
 
   // Dividir em 3 linhas
   const itemsPerRow = Math.ceil(parceiros.length / 3);
   const row1 = parceiros.slice(0, itemsPerRow);
   const row2 = parceiros.slice(itemsPerRow, itemsPerRow * 2);
   const row3 = parceiros.slice(itemsPerRow * 2);
-
-  if (loading) {
-    return (
-      <section className="w-full py-12 md:py-20" style={{ backgroundColor: 'var(--bg-alt, #FFFFFF)' }}>
-        <div className="flex justify-center items-center py-20">
-          <div className="animate-pulse text-gray-400">Carregando parceiros...</div>
-        </div>
-      </section>
-    );
-  }
 
   if (parceiros.length === 0) {
     return null; // Nao mostrar secao se nao houver parceiros

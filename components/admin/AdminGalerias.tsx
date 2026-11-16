@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Galeria, GaleriaFoto, Categoria } from '@/lib/supabase';
+import { Galeria, GaleriaFoto, Categoria } from '@/lib/tipos';
 import { CldUploadWidget } from 'next-cloudinary';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { 

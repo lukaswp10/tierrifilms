@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 
 // GET - Listar interacoes de um lead
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'lead_id e obrigatorio' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('lead_interacoes')
       .select('*')
       .eq('lead_id', lead_id)
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tipo invalido' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('lead_interacoes')
       .insert([{
         lead_id,
@@ -86,7 +86,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID e obrigatorio' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from('lead_interacoes')
       .delete()
       .eq('id', id);

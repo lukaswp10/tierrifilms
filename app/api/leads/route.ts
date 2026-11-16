@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/db';
 
 // POST - Salvar lead do formulario de contato (publico)
 export async function POST(request: Request) {
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     }
 
     // Inserir lead no banco
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('leads')
       .insert({
         nome: nome.trim().substring(0, 100),

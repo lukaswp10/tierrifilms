@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 
 // GET - Listar leads com filtros e metricas
 export async function GET(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const data_evento_fim = searchParams.get('data_evento_fim');
     const limite = parseInt(searchParams.get('limite') || '100');
 
-    let query = supabaseAdmin
+    let query = db
       .from('leads')
       .select('*')
       .order('created_at', { ascending: false })
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Buscar por nome, email ou empresa
     if (busca) {
-      query = query.or(`nome.ilike.%${busca}%,email.ilike.%${busca}%,empresa.ilike.%${busca}%`);
+      query = query.buscar(['nome', 'email', 'empresa'], busca);
     }
 
     // Filtros avancados
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     // Buscar todos os leads para calcular metricas
-    const { data: allLeads } = await supabaseAdmin
+    const { data: allLeads } = await db
       .from('leads')
       .select('status, orcamento_estimado, created_at, proximo_contato');
 
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       orcamento_estimado: orcamento_estimado ? Number(orcamento_estimado) : null,
     };
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('leads')
       .insert([leadData])
       .select()
@@ -226,7 +226,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('leads')
       .update(updateData)
       .eq('id', id)
@@ -257,7 +257,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'ID e obrigatorio' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from('leads')
       .delete()
       .eq('id', id);

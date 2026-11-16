@@ -1,8 +1,65 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { getSession } from '@/lib/auth';
+
+// Conta principal: nunca pode ser excluida.
+const ADMIN_PRINCIPAL = 'admin@tierrifilms.com.br';
+
+// GET - Listar usuarios (sem senha)
+export async function GET() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 });
+  }
+
+  const { data, error } = await db
+    .from('usuarios')
+    .select('id, email, nome, role, created_at')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Erro ao listar usuarios:', error);
+    return NextResponse.json({ error: 'Erro ao listar usuarios' }, { status: 500 });
+  }
+
+  return NextResponse.json(data || []);
+}
+
+// DELETE - Excluir usuario (so admin; nao exclui a si mesmo nem o admin principal)
+export async function DELETE(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Nao autenticado' }, { status: 401 });
+  }
+  if (session.role !== 'admin') {
+    return NextResponse.json({ error: 'Sem permissao para excluir usuarios' }, { status: 403 });
+  }
+
+  const id = new URL(request.url).searchParams.get('id');
+  if (!id) {
+    return NextResponse.json({ error: 'ID e obrigatorio' }, { status: 400 });
+  }
+  if (id === session.id) {
+    return NextResponse.json({ error: 'Voce nao pode excluir o proprio usuario' }, { status: 400 });
+  }
+
+  const { data: alvo } = await db.from('usuarios').select('id, email').eq('id', id).single();
+  if (!alvo) {
+    return NextResponse.json({ error: 'Usuario nao encontrado' }, { status: 404 });
+  }
+  if (alvo.email === ADMIN_PRINCIPAL) {
+    return NextResponse.json({ error: 'O usuario admin principal nao pode ser excluido' }, { status: 403 });
+  }
+
+  const { error } = await db.from('usuarios').delete().eq('id', id);
+  if (error) {
+    console.error('Erro ao excluir usuario:', error);
+    return NextResponse.json({ error: 'Erro ao excluir usuario' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +95,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existente } = await supabase
+    const { data: existente } = await db
       .from('usuarios')
       .select('id')
       .eq('email', email.toLowerCase())
@@ -53,7 +110,7 @@ export async function POST(request: Request) {
 
     const senhaHash = await bcrypt.hash(senha, 10);
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('usuarios')
       .insert([{
         email: email.toLowerCase(),
@@ -115,7 +172,7 @@ export async function PUT(request: Request) {
       }
 
       // Buscar usuario atual com senha_hash
-      const { data: usuario } = await supabaseAdmin
+      const { data: usuario } = await db
         .from('usuarios')
         .select('id, senha_hash')
         .eq('id', session.id)
@@ -139,7 +196,7 @@ export async function PUT(request: Request) {
 
       // Atualizar senha
       const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from('usuarios')
         .update({ senha_hash: novaSenhaHash })
         .eq('id', session.id);
@@ -166,7 +223,7 @@ export async function PUT(request: Request) {
       }
 
       // Buscar usuario alvo
-      const { data: targetUser } = await supabaseAdmin
+      const { data: targetUser } = await db
         .from('usuarios')
         .select('id, role, email')
         .eq('id', targetUserId)
@@ -189,7 +246,7 @@ export async function PUT(request: Request) {
 
       // Atualizar senha do editor
       const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from('usuarios')
         .update({ senha_hash: novaSenhaHash })
         .eq('id', targetUserId);

@@ -36,6 +36,26 @@ npm run build
 npm start
 ```
 
+## Banco de dados
+
+Postgres no **Neon** (projeto `tierrifilms`, regiao Sao Paulo), acessado so pelo
+servidor (`lib/db.ts`). As funcoes da Vercel rodam em `gru1` (Sao Paulo) para
+ficar perto do banco (`vercel.json`).
+
+Variaveis (Vercel e `.env.local`, nunca no git):
+
+- `DATABASE_URL` - endereco do banco no Neon (com pooler)
+- `SESSION_SECRET` - assinatura do login do painel
+- `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`, `NEXT_PUBLIC_CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` - fotos e videos
+
+Criar/atualizar as tabelas (pode rodar de novo, so cria o que falta):
+
+```bash
+node --env-file=.env.local scripts/aplicar-schema.mjs
+```
+
+O desenho das tabelas fica em `db/schema.sql`.
+
 ## Deploy na Vercel
 
 1. Faca push do codigo para o GitHub

@@ -64,7 +64,7 @@ const nextConfig: NextConfig = {
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https://images.unsplash.com https://res.cloudinary.com",
               "media-src 'self' https://videos.pexels.com https://res.cloudinary.com",
-              "connect-src 'self' https://*.supabase.co https://api.cloudinary.com",
+              "connect-src 'self' https://api.cloudinary.com",
               "frame-src https://www.youtube.com https://player.vimeo.com",
               "frame-ancestors 'none'",
             ].join("; "),

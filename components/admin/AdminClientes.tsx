@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Lead, LeadInteracao } from '@/lib/supabase';
+import { Lead, LeadInteracao } from '@/lib/tipos';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import KanbanBoard from './KanbanBoard';
 import { 

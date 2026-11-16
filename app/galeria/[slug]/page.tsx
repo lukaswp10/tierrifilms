@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getGaleriaPorSlug, getFotosDaGaleria, getTodasGalerias } from '@/lib/supabase';
+import { getGaleriaPorSlug, getFotosDaGaleria, getTodasGalerias } from '@/lib/dados';
 import GaleriaDetalhes from '@/components/GaleriaDetalhes';
 
 interface Props {

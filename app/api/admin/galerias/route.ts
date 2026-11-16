@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { db } from '@/lib/db';
 
 // GET - Listar galerias
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('galerias')
       .select('*')
       .order('is_principal', { ascending: false })
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Validar limite de 6 galerias principais ao criar
     if (is_principal === true) {
-      const { count } = await supabaseAdmin
+      const { count } = await db
         .from('galerias')
         .select('*', { count: 'exact', head: true })
         .eq('is_principal', true);
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('galerias')
       .insert({
         nome: nome.trim().substring(0, 255),
@@ -105,7 +105,7 @@ export async function PUT(request: NextRequest) {
     // Validar limite de 6 galerias principais
     if (is_principal === true) {
       // Buscar galeria atual para ver se ja era principal
-      const { data: currentGaleria } = await supabaseAdmin
+      const { data: currentGaleria } = await db
         .from('galerias')
         .select('is_principal')
         .eq('id', id)
@@ -113,7 +113,7 @@ export async function PUT(request: NextRequest) {
 
       // Se nao era principal e quer virar, verificar limite
       if (!currentGaleria?.is_principal) {
-        const { count } = await supabaseAdmin
+        const { count } = await db
           .from('galerias')
           .select('*', { count: 'exact', head: true })
           .eq('is_principal', true);
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
     if (ordem !== undefined) updateData.ordem = ordem;
     if (is_principal !== undefined) updateData.is_principal = is_principal;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from('galerias')
       .update(updateData)
       .eq('id', id)
@@ -176,12 +176,12 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Deletar fotos da galeria primeiro (cascade ja faz isso, mas por seguranca)
-    await supabaseAdmin
+    await db
       .from('galeria_fotos')
       .delete()
       .eq('galeria_id', id);
 
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from('galerias')
       .delete()
       .eq('id', id);
